@@ -135,18 +135,22 @@ namespace embree
     arguments.buildProgress = buildProgress;
     arguments.userPtr = nullptr;
     
-    for (size_t i=0; i<10; i++)
-    {
-      /* we recreate the prims array here, as the builders modify this array */
-      for (size_t j=0; j<prims.size(); j++) prims[j] = prims_i[j];
 
-      std::cout << "iteration " << i << ": building BVH over " << prims.size() << " primitives, " << std::flush;
-      double t0 = getSeconds();
-      Node* root = (Node*) rtcBuildBVH(&arguments);
-      double t1 = getSeconds();
-      const float sah = root ? root->sah() : 0.0f;
-      std::cout << 1000.0f*(t1-t0) << "ms, " << 1E-6*double(prims.size())/(t1-t0) << " Mprims/s, sah = " << sah << " [DONE]" << std::endl;
-    }
+    /* we recreate the prims array here, as the builders modify this array */
+    for (size_t j=0; j<prims.size(); j++) prims[j] = prims_i[j];
+
+    std::cout << "Building BVH over " << prims.size() << " primitives, " << std::flush;
+    double t0 = getSeconds();
+    Node* root = (Node*) rtcBuildBVH(&arguments);
+    double t1 = getSeconds();
+    const float sah = root ? root->sah() : 0.0f;
+    std::cout << 1000.0f*(t1-t0) << "ms, " << 1E-6*double(prims.size())/(t1-t0) << " Mprims/s, sah = " << sah << " [DONE]" << std::endl;
+
+
+
+	/*	build map here	*/
+
+
 
     rtcReleaseBVH(bvh);
   }
@@ -162,6 +166,8 @@ namespace embree
     const size_t extraSpace = 1000000;
     avector<RTCBuildPrimitive> prims;
     prims.resize(N);
+
+	/*	Create primitives	*/
     for (size_t i=0; i<N; i++)
     {
       const float x = float(drand48());
@@ -182,12 +188,13 @@ namespace embree
       prims[i] = prim;
     }
 
+	/*	only want to test high quality build
     std::cout << "Low quality BVH build:" << std::endl;
     build(RTC_BUILD_QUALITY_LOW,prims,cfg);
 
     std::cout << "Normal quality BVH build:" << std::endl;
     build(RTC_BUILD_QUALITY_MEDIUM,prims,cfg);
-
+	*/
     std::cout << "High quality BVH build:" << std::endl;
     build(RTC_BUILD_QUALITY_HIGH,prims,cfg,extraSpace);
   }
