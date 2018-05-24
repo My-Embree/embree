@@ -1,0 +1,62 @@
+Inner Node:
+  -bounds
+      -bounds is type BBox3fa
+      -BBox3fa is a BBox vector of Vec3fa
+      -Vec3fa holds x y and z coordinates (floats)
+      -BBox represents the lower and upper bounds of the box (can find center, size, if empty etc. of box)
+  -children
+      -node pointers (points to next Inner node)
+
+LeafNode:
+  -id
+     -example does 1-to-1 (LeafNodeID = primID)
+  -bounds
+     -see Inner Node bounds
+
+Geometry:
+    -vertices (Vec3fa) and triangles(int v0,v1,v2) -> make up a primitive
+
+Primitives:
+  -lower x, y, z (floats)
+  -upper x,y,z (floats)
+  -geomID -> specific to geometry
+  -primID -> specific to primitive (unique)
+
+BVH (3 builds based off quality: Morton, BinnedSAH, SpatialSAH
+   -embree::RefCount
+  -device
+  -allcoator
+  -morton_src
+  -morton_tmp
+
+Node* root : points to first node in the BVH (this is "Inner Node")
+root @ address : 0x000001fc7f8bd700 
+-Inner Node:
+  -bounds @ address 0x000001fc7f8bd710
+    -[0] @ 0x000001fc7f8bd710
+       -lower @ 0x000001fc7f8bd710 -> gives you x, y, z, a, u, and w
+       -upper @ 0x000001fc7f8bd720
+    -[1] @ 0x000001fc7f8bd730
+        -lower @ 0x000001fc7f8bd730
+        -upper @ 0x000001fc7f8bd740
+
+  -children @ address 0x000001fc7f8bd750
+    -[0] @ 0x000001fc7f8bd760 (root address + 0x60)
+        -children @ 0x000001fc7f8bd7b0
+           -[0] @ 0x000001fc7f8bd7c0 (0x000001fc7f8bd760 + 0x60)
+                  -child [0] @ 0x000001fc7f8bd820 (+ 0x60)
+                  -child [1] @ 0x000001fc7f8abf00 (-0x118C0)
+           -[1] @ 0x000001fc7f889fb0 (0x000001fc7f8bd760 - 0x337B0)
+                  -child [0] @ 0x000001fc7f88a010 (+0x60)
+                  -child [1] @ 0x000001fc7f8990b0 (+0xF100)
+    -[1] @ 0x000001fc7f8be4c0 (0x000001fc7f8bd760  + 0xD60)
+        -children @ 0x000001fc7f8be510
+           -[0] @ 0x000001fc7f8be520 (0x000001fc7f8be4c0 + 0x60)
+                   -child[0] @ 0x000001fc7f8be580 (+0x60)
+                   -child[1] @ 0x000001fc7f8b2180 (+0xC3A0)
+           -[1] @ 0x000001fc7f889020 (0x000001fc7f8be4c0 - 0x354A0)
+                   -child[0] @ 0x000001fc7f889080 (+0x60)
+                   -child[1] @ 0x000001fc7f89c720 (+0x13700)
+
+-_vfptr = 0x00007ff68d3784c8
+  -[0] = 0x00007ff68d0932f6
