@@ -17,6 +17,7 @@
 #include "../common/tutorial/tutorial_device.h"
 #include <map>
 #include <iterator>
+#include <queue>
 
 namespace embree
 {	
@@ -66,7 +67,6 @@ namespace embree
     static void* create (RTCThreadLocalAllocator alloc, unsigned int numChildren, void* userPtr)
     {
       assert(numChildren == 2);
-	  //InnerNode::nodeType type = INNER;
       void* ptr = rtcThreadLocalAlloc(alloc,sizeof(InnerNode),16);
       return (void*) new (ptr) InnerNode;
     }
@@ -91,16 +91,11 @@ namespace embree
     unsigned id;
     BBox3fa bounds;
 
-	//char nodeType;
-	//enum nodeType { INNER = 1, LEAF = 2 } type;
-
 	LeafNode(unsigned id_new, const BBox3fa& bounds_new) {
 		id = id_new;
 		bounds = bounds_new;
-		//nodeType = 'L';
 		nodeType = 2;
 	}
-    //  : id(id), bounds(bounds) {}
 
     float sah() {
       return 1.0f;
@@ -109,31 +104,49 @@ namespace embree
     static void* create (RTCThreadLocalAllocator alloc, const RTCBuildPrimitive* prims, size_t numPrims, void* userPtr)
     {
       assert(numPrims == 1);
-	  //LeafNode::nodeType type = LEAF;
       void* ptr = rtcThreadLocalAlloc(alloc,sizeof(LeafNode),16);
       return (void*) new (ptr) LeafNode(prims->primID,*(BBox3fa*)prims);
     }
   };
 
+  void buildMap(std::map<int, int> &nodeMap, InnerNode* root) {
+	std::queue<Node*> nodeQueue;
+	std::queue<int> idQueue;
 
-  /* recursive pre order tree traversal */
-  void preorderRecurse(std::map<int, int> &nodeMap, InnerNode* curr, int nodeID) {
-	if (curr->nodeType == 1) {
-	  nodeMap.insert(std::pair<int, int>(nodeID, curr->nodeType));
-	  preorderRecurse(nodeMap, (InnerNode*)curr->children[0], 2 * nodeID + 1);
-	  preorderRecurse(nodeMap, (InnerNode*)curr->children[1], 2 * nodeID + 2);
-	} else {		// leaf node
-	  nodeMap.insert(std::pair<int, int>(nodeID, curr->nodeType));
+	// initialize queue with root node and root id
+	nodeQueue.push(root);
+	idQueue.push(0);
+
+	Node* nodeTemp;
+	int idTemp;
+
+	while (!nodeQueue.empty()) {
+		// pop current node
+		nodeTemp = nodeQueue.front();
+		nodeQueue.pop();
+
+		// pop current node id
+		idTemp = idQueue.front();
+		idQueue.pop();
+
+		// leaf nodes only point to primitives, check node type first
+		if (nodeTemp->nodeType == 1) {		// inner node
+			nodeQueue.push(((InnerNode*)nodeTemp)->children[0]);
+			idQueue.push(2 * idTemp + 1);
+
+			nodeQueue.push(((InnerNode*)nodeTemp)->children[1]);
+			idQueue.push(2 * idTemp + 2);
+		}
+		else {
+			std::cout << "LEAF NODE POPPED" << std::endl;
+		}
+
+		// insert node id and node type to map
+		nodeMap.insert(std::pair<int, int>(idTemp, nodeTemp->nodeType));
 	}
   }
 
-  void buildMap(std::map<int, int> &nodeMap, InnerNode* root) {
-	int nodeID = 0;
-	nodeMap.insert(std::pair<int, int>(0, root->nodeType));
-    preorderRecurse(nodeMap, (InnerNode*)root->children[0], 2 * nodeID + 1);
-	preorderRecurse(nodeMap, (InnerNode*)root->children[1], 2 * nodeID + 2);
-  }
-
+  // prints tree
   void printMap(std::map<int, int> &nodeMap) {
 	  
 	  std::map<int, int>::iterator itr;
@@ -149,9 +162,6 @@ namespace embree
 		  }
 	  }
 	  std::cout << std::endl;
-
-	  //std::cout << "Key begin: \n" << nodeMap.begin()->first;
-	  //std::cout << "Key end: \n" << nodeMap.rbegin()->first;
   }
   
 
