@@ -15,9 +15,11 @@
 // ======================================================================== //
 
 #include "../common/tutorial/tutorial_device.h"
+#include <map>
+#include <iterator>
 
 namespace embree
-{
+{	
   RTCScene g_scene  = nullptr;
 
   /* This function is called by the builder to signal progress and to
@@ -43,6 +45,7 @@ namespace embree
   struct Node
   {
     virtual float sah() = 0;
+	int nodeType;
   };
 
   struct InnerNode : public Node
@@ -53,6 +56,7 @@ namespace embree
     InnerNode() {
       bounds[0] = bounds[1] = empty;
       children[0] = children[1] = nullptr;
+	  nodeType = 1;
     }
 
     float sah() {
@@ -62,6 +66,7 @@ namespace embree
     static void* create (RTCThreadLocalAllocator alloc, unsigned int numChildren, void* userPtr)
     {
       assert(numChildren == 2);
+	  //InnerNode::nodeType type = INNER;
       void* ptr = rtcThreadLocalAlloc(alloc,sizeof(InnerNode),16);
       return (void*) new (ptr) InnerNode;
     }
@@ -86,8 +91,16 @@ namespace embree
     unsigned id;
     BBox3fa bounds;
 
-    LeafNode (unsigned id, const BBox3fa& bounds)
-      : id(id), bounds(bounds) {}
+	//char nodeType;
+	//enum nodeType { INNER = 1, LEAF = 2 } type;
+
+	LeafNode(unsigned id_new, const BBox3fa& bounds_new) {
+		id = id_new;
+		bounds = bounds_new;
+		//nodeType = 'L';
+		nodeType = 2;
+	}
+    //  : id(id), bounds(bounds) {}
 
     float sah() {
       return 1.0f;
@@ -96,10 +109,51 @@ namespace embree
     static void* create (RTCThreadLocalAllocator alloc, const RTCBuildPrimitive* prims, size_t numPrims, void* userPtr)
     {
       assert(numPrims == 1);
+	  //LeafNode::nodeType type = LEAF;
       void* ptr = rtcThreadLocalAlloc(alloc,sizeof(LeafNode),16);
       return (void*) new (ptr) LeafNode(prims->primID,*(BBox3fa*)prims);
     }
   };
+
+
+  /* recursive pre order tree traversal */
+  void preorderRecurse(std::map<int, int> &nodeMap, InnerNode* curr, int nodeID) {
+	if (curr->nodeType == 1) {
+	  nodeMap.insert(std::pair<int, int>(nodeID, curr->nodeType));
+	  preorderRecurse(nodeMap, (InnerNode*)curr->children[0], 2 * nodeID + 1);
+	  preorderRecurse(nodeMap, (InnerNode*)curr->children[1], 2 * nodeID + 2);
+	} else {		// leaf node
+	  nodeMap.insert(std::pair<int, int>(nodeID, curr->nodeType));
+	}
+  }
+
+  void buildMap(std::map<int, int> &nodeMap, InnerNode* root) {
+	int nodeID = 0;
+	nodeMap.insert(std::pair<int, int>(0, root->nodeType));
+    preorderRecurse(nodeMap, (InnerNode*)root->children[0], 2 * nodeID + 1);
+	preorderRecurse(nodeMap, (InnerNode*)root->children[1], 2 * nodeID + 2);
+  }
+
+  void printMap(std::map<int, int> &nodeMap) {
+	  
+	  std::map<int, int>::iterator itr;
+	  std::cout << "\nThe map for the BVH is : \n";
+	  std::cout << "\tKEY\tELEMENT\n";
+	  for (itr = nodeMap.begin(); itr != nodeMap.end(); ++itr)
+	  {
+		  std::cout << '\t' << itr->first
+			  << '\t' << itr->second << '\n';
+
+		  if (itr->second != 1) {
+			  std::cout << "LEAF" << std::endl;
+		  }
+	  }
+	  std::cout << std::endl;
+
+	  //std::cout << "Key begin: \n" << nodeMap.begin()->first;
+	  //std::cout << "Key end: \n" << nodeMap.rbegin()->first;
+  }
+  
 
   void build(RTCBuildQuality quality, avector<RTCBuildPrimitive>& prims_i, char* cfg, size_t extraSpace = 0)
   {
@@ -149,8 +203,9 @@ namespace embree
 
 
 	/*	build map here	*/
-
-
+	std::map<int, int> nodeMap;
+	buildMap(nodeMap, (InnerNode*)root);
+	printMap(nodeMap);
 
     rtcReleaseBVH(bvh);
   }
@@ -162,8 +217,9 @@ namespace embree
     renderTile = renderTileStandard;
 
     /* create random bounding boxes */
-    const size_t N = 2300000;
-    const size_t extraSpace = 1000000;
+    //const size_t N = 2300000;
+	const size_t N = 200;
+    const size_t extraSpace = 100;
     avector<RTCBuildPrimitive> prims;
     prims.resize(N);
 
