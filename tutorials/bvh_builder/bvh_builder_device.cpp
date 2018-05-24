@@ -109,7 +109,7 @@ namespace embree
     }
   };
 
-  void buildMap(std::map<int, int> &nodeMap, InnerNode* root) {
+  void buildMap(std::map<int, long long> &nodeMap, InnerNode* root) {
 	std::queue<Node*> nodeQueue;
 	std::queue<int> idQueue;
 
@@ -138,28 +138,29 @@ namespace embree
 			idQueue.push(2 * idTemp + 2);
 		}
 		else {
-			std::cout << "LEAF NODE POPPED" << std::endl;
+			//std::cout << "LEAF NODE POPPED" << std::endl;
 		}
 
 		// insert node id and node type to map
-		nodeMap.insert(std::pair<int, int>(idTemp, nodeTemp->nodeType));
+		nodeMap.insert(std::pair<int, long long>(idTemp, (long long)nodeTemp));
 	}
   }
 
   // prints tree
-  void printMap(std::map<int, int> &nodeMap) {
+  void printMap(std::map<int, long long> &nodeMap) {
 	  
-	  std::map<int, int>::iterator itr;
+	  std::map<int, long long>::iterator itr;
 	  std::cout << "\nThe map for the BVH is : \n";
 	  std::cout << "\tKEY\tELEMENT\n";
 	  for (itr = nodeMap.begin(); itr != nodeMap.end(); ++itr)
 	  {
 		  std::cout << '\t' << itr->first
 			  << '\t' << itr->second << '\n';
-
+		  /*
 		  if (itr->second != 1) {
 			  std::cout << "LEAF" << std::endl;
 		  }
+		  */
 	  }
 	  std::cout << std::endl;
   }
@@ -213,7 +214,7 @@ namespace embree
 
 
 	/*	build map here	*/
-	std::map<int, int> nodeMap;
+	std::map<int, long long> nodeMap;
 	buildMap(nodeMap, (InnerNode*)root);
 	printMap(nodeMap);
 
