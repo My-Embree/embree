@@ -18,6 +18,11 @@
 #include <map>
 #include <iterator>
 #include <queue>
+#include <iostream>
+#include <fstream>
+
+//#define BUILD_MAP
+#define BUILD_TXT
 
 namespace embree
 {	
@@ -46,7 +51,7 @@ namespace embree
   struct Node
   {
     virtual float sah() = 0;
-	int nodeType;
+	unsigned int nodeType;
   };
 
   struct InnerNode : public Node
@@ -109,7 +114,59 @@ namespace embree
     }
   };
 
-  void buildMap(std::map<int, long long> &nodeMap, InnerNode* root) {
+  void buildTXT(InnerNode* root) {
+	  std::queue<Node*> nodeQueue;
+	  std::queue<int> idQueue;
+
+	  // initialize queue with root node and root id
+	  nodeQueue.push(root);
+	  idQueue.push(0);
+
+	  InnerNode* nodeTemp;
+	  unsigned int idTemp;
+
+	  std::ofstream f("nodes.txt");
+
+	  if (f.is_open()) {
+		  while (!nodeQueue.empty()) {
+			  // pop current node
+			  nodeTemp = (InnerNode*)nodeQueue.front();
+			  nodeQueue.pop();
+
+			  // pop current node id
+			  idTemp = idQueue.front();
+			  idQueue.pop();
+
+			  // leaf nodes only point to primitives, check node type first
+			  if (nodeTemp->nodeType == 1) {		// inner node
+				  nodeQueue.push(((InnerNode*)nodeTemp)->children[0]);
+				  idQueue.push(2 * idTemp + 1);
+
+				  nodeQueue.push(((InnerNode*)nodeTemp)->children[1]);
+				  idQueue.push(2 * idTemp + 2);
+			  }
+			  else {
+				  //std::cout << "LEAF NODE POPPED" << std::endl;
+			  }
+
+			  // write to text file, each line in file is a node
+			  f << idTemp << " " << nodeTemp->nodeType << " " << (unsigned int)nodeTemp->bounds[0].lower.x << " " << (unsigned int)nodeTemp->bounds[0].lower.y << " " <<
+				  (unsigned int)nodeTemp->bounds[0].lower.z << " " << (unsigned int)nodeTemp->bounds[0].upper.x << " " << (unsigned int)nodeTemp->bounds[0].upper.y << " " <<
+				  (unsigned int)nodeTemp->bounds[0].upper.z << " " << (unsigned int)nodeTemp->bounds[1].lower.x << " " << (unsigned int)nodeTemp->bounds[1].lower.y << " " <<
+				  (unsigned int)nodeTemp->bounds[1].lower.z << " " << (unsigned int)nodeTemp->bounds[1].upper.x << " " << (unsigned int)nodeTemp->bounds[1].upper.y << " " <<
+				  (unsigned int)nodeTemp->bounds[1].upper.z << "\n";
+
+		  }
+
+		  f.close();
+	  }
+	  else {
+		  std::cout << "Unable to open file" << std::endl;
+	  }
+  }
+
+
+  void buildMap(std::map<unsigned int, long long> &nodeMap, InnerNode* root) {
 	std::queue<Node*> nodeQueue;
 	std::queue<int> idQueue;
 
@@ -142,7 +199,7 @@ namespace embree
 		}
 
 		// insert node id and node type to map
-		nodeMap.insert(std::pair<int, long long>(idTemp, (long long)nodeTemp));
+		nodeMap.insert(std::pair<unsigned int, long long>(idTemp, (long long)nodeTemp));
 	}
   }
 
@@ -212,11 +269,17 @@ namespace embree
     std::cout << 1000.0f*(t1-t0) << "ms, " << 1E-6*double(prims.size())/(t1-t0) << " Mprims/s, sah = " << sah << " [DONE]" << std::endl;
 
 
-
-	/*	build map here	*/
-	std::map<int, long long> nodeMap;
+#ifdef	BUILD_MAP
+	std::map<unsigned int, long long> nodeMap;
 	buildMap(nodeMap, (InnerNode*)root);
 	printMap(nodeMap);
+#endif // BUILD_MAP
+
+
+#ifdef BUILD_TXT
+	buildTXT((InnerNode*)root);
+#endif // BUILD_TXT
+
 
     rtcReleaseBVH(bvh);
   }
