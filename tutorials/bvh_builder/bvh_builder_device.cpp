@@ -122,7 +122,8 @@ namespace embree
 	  nodeQueue.push(root);
 	  idQueue.push(0);
 
-	  InnerNode* nodeTemp;
+	  InnerNode* innerNode;
+	  LeafNode* leafNode;
 	  unsigned int idTemp;
 
 	  std::ofstream f("nodes.txt");
@@ -130,7 +131,8 @@ namespace embree
 	  if (f.is_open()) {
 		  while (!nodeQueue.empty()) {
 			  // pop current node
-			  nodeTemp = (InnerNode*)nodeQueue.front();
+			  innerNode = (InnerNode*)nodeQueue.front();
+			  leafNode = (LeafNode*)nodeQueue.front();
 			  nodeQueue.pop();
 
 			  // pop current node id
@@ -138,24 +140,29 @@ namespace embree
 			  idQueue.pop();
 
 			  // leaf nodes only point to primitives, check node type first
-			  if (nodeTemp->nodeType == 1) {		// inner node
-				  nodeQueue.push(((InnerNode*)nodeTemp)->children[0]);
+			  if (innerNode->nodeType == 1) {		// inner node
+				  nodeQueue.push(((InnerNode*)innerNode)->children[0]);
 				  idQueue.push(2 * idTemp + 1);
 
-				  nodeQueue.push(((InnerNode*)nodeTemp)->children[1]);
+				  nodeQueue.push(((InnerNode*)innerNode)->children[1]);
 				  idQueue.push(2 * idTemp + 2);
+
+				  // write to text file, each line in file is a node
+				  f << idTemp << " " << innerNode->nodeType << " " << (unsigned int)innerNode->bounds[0].lower.x << " " << (unsigned int)innerNode->bounds[0].lower.y << " " <<
+					  (unsigned int)innerNode->bounds[0].lower.z << " " << (unsigned int)innerNode->bounds[0].upper.x << " " << (unsigned int)innerNode->bounds[0].upper.y << " " <<
+					  (unsigned int)innerNode->bounds[0].upper.z << " " << (unsigned int)innerNode->bounds[1].lower.x << " " << (unsigned int)innerNode->bounds[1].lower.y << " " <<
+					  (unsigned int)innerNode->bounds[1].lower.z << " " << (unsigned int)innerNode->bounds[1].upper.x << " " << (unsigned int)innerNode->bounds[1].upper.y << " " <<
+					  (unsigned int)innerNode->bounds[1].upper.z << "\n";
 			  }
 			  else {
 				  //std::cout << "LEAF NODE POPPED" << std::endl;
+
+				  // write to text file, each line in file is a node
+				  f << idTemp << " " << leafNode->nodeType << " " << (unsigned int)leafNode->bounds.lower.x << " " << (unsigned int)leafNode->bounds.lower.y << " " <<
+					  (unsigned int)leafNode->bounds.lower.z << " " << (unsigned int)leafNode->bounds.upper.x << " " << (unsigned int)leafNode->bounds.upper.y << " " <<
+					  (unsigned int)leafNode->bounds.upper.z << "\n";
+
 			  }
-
-			  // write to text file, each line in file is a node
-			  f << idTemp << " " << nodeTemp->nodeType << " " << (unsigned int)nodeTemp->bounds[0].lower.x << " " << (unsigned int)nodeTemp->bounds[0].lower.y << " " <<
-				  (unsigned int)nodeTemp->bounds[0].lower.z << " " << (unsigned int)nodeTemp->bounds[0].upper.x << " " << (unsigned int)nodeTemp->bounds[0].upper.y << " " <<
-				  (unsigned int)nodeTemp->bounds[0].upper.z << " " << (unsigned int)nodeTemp->bounds[1].lower.x << " " << (unsigned int)nodeTemp->bounds[1].lower.y << " " <<
-				  (unsigned int)nodeTemp->bounds[1].lower.z << " " << (unsigned int)nodeTemp->bounds[1].upper.x << " " << (unsigned int)nodeTemp->bounds[1].upper.y << " " <<
-				  (unsigned int)nodeTemp->bounds[1].upper.z << "\n";
-
 		  }
 
 		  f.close();
@@ -257,9 +264,19 @@ namespace embree
     arguments.buildProgress = buildProgress;
     arguments.userPtr = nullptr;
     
+//	std::ofstream f("prims.txt");
 
-    /* we recreate the prims array here, as the builders modify this array */
-    for (size_t j=0; j<prims.size(); j++) prims[j] = prims_i[j];
+	//if (f.is_open()) {
+		/* we recreate the prims array here, as the builders modify this array */
+		for (size_t j = 0; j < prims.size(); j++) {
+			prims[j] = prims_i[j];
+		
+		}
+	//}
+	//else {
+	//	std::cout << "Unable to open prims.txt" << std::endl;
+	//}
+
 
     std::cout << "Building BVH over " << prims.size() << " primitives, " << std::flush;
     double t0 = getSeconds();
