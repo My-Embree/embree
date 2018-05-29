@@ -80,7 +80,7 @@ namespace embree
         ((InnerNode*)nodePtr)->bounds[i] = *(const BBox3fa*) bounds[i];
     }
   };
-
+  //leaf node seems to be everything on the bottom/lowest nodes/triangles
   struct LeafNode : public Node
   {
     unsigned id;
@@ -158,8 +158,8 @@ namespace embree
     renderTile = renderTileStandard;
 
     /* create random bounding boxes */
-    const size_t N = 2300000;
-    const size_t extraSpace = 1000000;
+	const size_t N = 2000;//2300000;
+	const size_t extraSpace = 1000;//1000000;
     avector<RTCBuildPrimitive> prims;
     prims.resize(N);
     for (size_t i=0; i<N; i++)
