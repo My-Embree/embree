@@ -15,9 +15,17 @@
 // ======================================================================== //
 
 #include "../common/tutorial/tutorial_device.h"
+#include <map>
+#include <iterator>
+#include <queue>
+#include <iostream>
+#include <fstream>
+
+//#define BUILD_MAP
+#define BUILD_TXT
 
 namespace embree
-{
+{	
   RTCScene g_scene  = nullptr;
 
   /* This function is called by the builder to signal progress and to
@@ -43,6 +51,7 @@ namespace embree
   struct Node
   {
     virtual float sah() = 0;
+	unsigned int nodeType;
   };
 
   struct InnerNode : public Node
@@ -53,6 +62,7 @@ namespace embree
     InnerNode() {
       bounds[0] = bounds[1] = empty;
       children[0] = children[1] = nullptr;
+	  nodeType = 1;
     }
 
     float sah() {
@@ -86,8 +96,11 @@ namespace embree
     unsigned id;
     BBox3fa bounds;
 
-    LeafNode (unsigned id, const BBox3fa& bounds)
-      : id(id), bounds(bounds) {}
+	LeafNode(unsigned id_new, const BBox3fa& bounds_new) {
+		id = id_new;
+		bounds = bounds_new;
+		nodeType = 2;
+	}
 
     float sah() {
       return 1.0f;
@@ -100,6 +113,122 @@ namespace embree
       return (void*) new (ptr) LeafNode(prims->primID,*(BBox3fa*)prims);
     }
   };
+
+  void buildTXT(InnerNode* root) {
+	  std::queue<Node*> nodeQueue;
+	  std::queue<int> idQueue;
+
+	  // initialize queue with root node and root id
+	  nodeQueue.push(root);
+	  idQueue.push(0);
+
+	  InnerNode* innerNode;
+	  LeafNode* leafNode;
+	  unsigned int idTemp;
+
+	  std::ofstream f("nodes.txt");
+
+	  if (f.is_open()) {
+		  while (!nodeQueue.empty()) {
+			  // pop current node
+			  innerNode = (InnerNode*)nodeQueue.front();
+			  leafNode = (LeafNode*)nodeQueue.front();
+			  nodeQueue.pop();
+
+			  // pop current node id
+			  idTemp = idQueue.front();
+			  idQueue.pop();
+
+			  // leaf nodes only point to primitives, check node type first
+			  if (innerNode->nodeType == 1) {		// inner node
+				  nodeQueue.push(((InnerNode*)innerNode)->children[0]);
+				  idQueue.push(2 * idTemp + 1);
+
+				  nodeQueue.push(((InnerNode*)innerNode)->children[1]);
+				  idQueue.push(2 * idTemp + 2);
+
+				  // write to text file, each line in file is a node
+				  f << idTemp << " " << innerNode->nodeType << " " << (unsigned int)innerNode->bounds[0].lower.x << " " << (unsigned int)innerNode->bounds[0].lower.y << " " <<
+					  (unsigned int)innerNode->bounds[0].lower.z << " " << (unsigned int)innerNode->bounds[0].upper.x << " " << (unsigned int)innerNode->bounds[0].upper.y << " " <<
+					  (unsigned int)innerNode->bounds[0].upper.z << " " << (unsigned int)innerNode->bounds[1].lower.x << " " << (unsigned int)innerNode->bounds[1].lower.y << " " <<
+					  (unsigned int)innerNode->bounds[1].lower.z << " " << (unsigned int)innerNode->bounds[1].upper.x << " " << (unsigned int)innerNode->bounds[1].upper.y << " " <<
+					  (unsigned int)innerNode->bounds[1].upper.z << "\n";
+			  }
+			  else {
+				  //std::cout << "LEAF NODE POPPED" << std::endl;
+
+				  // write to text file, each line in file is a node
+				  f << idTemp << " " << leafNode->nodeType << " " << (unsigned int)leafNode->bounds.lower.x << " " << (unsigned int)leafNode->bounds.lower.y << " " <<
+					  (unsigned int)leafNode->bounds.lower.z << " " << (unsigned int)leafNode->bounds.upper.x << " " << (unsigned int)leafNode->bounds.upper.y << " " <<
+					  (unsigned int)leafNode->bounds.upper.z << "\n";
+
+			  }
+		  }
+
+		  f.close();
+	  }
+	  else {
+		  std::cout << "Unable to open file" << std::endl;
+	  }
+  }
+
+
+  void buildMap(std::map<unsigned int, long long> &nodeMap, InnerNode* root) {
+	std::queue<Node*> nodeQueue;
+	std::queue<int> idQueue;
+
+	// initialize queue with root node and root id
+	nodeQueue.push(root);
+	idQueue.push(0);
+
+	Node* nodeTemp;
+	int idTemp;
+
+	while (!nodeQueue.empty()) {
+		// pop current node
+		nodeTemp = nodeQueue.front();
+		nodeQueue.pop();
+
+		// pop current node id
+		idTemp = idQueue.front();
+		idQueue.pop();
+
+		// leaf nodes only point to primitives, check node type first
+		if (nodeTemp->nodeType == 1) {		// inner node
+			nodeQueue.push(((InnerNode*)nodeTemp)->children[0]);
+			idQueue.push(2 * idTemp + 1);
+
+			nodeQueue.push(((InnerNode*)nodeTemp)->children[1]);
+			idQueue.push(2 * idTemp + 2);
+		}
+		else {
+			//std::cout << "LEAF NODE POPPED" << std::endl;
+		}
+
+		// insert node id and node type to map
+		nodeMap.insert(std::pair<unsigned int, long long>(idTemp, (long long)nodeTemp));
+	}
+  }
+
+  // prints tree
+  void printMap(std::map<int, long long> &nodeMap) {
+	  
+	  std::map<int, long long>::iterator itr;
+	  std::cout << "\nThe map for the BVH is : \n";
+	  std::cout << "\tKEY\tELEMENT\n";
+	  for (itr = nodeMap.begin(); itr != nodeMap.end(); ++itr)
+	  {
+		  std::cout << '\t' << itr->first
+			  << '\t' << itr->second << '\n';
+		  /*
+		  if (itr->second != 1) {
+			  std::cout << "LEAF" << std::endl;
+		  }
+		  */
+	  }
+	  std::cout << std::endl;
+  }
+  
 
   void build(RTCBuildQuality quality, avector<RTCBuildPrimitive>& prims_i, char* cfg, size_t extraSpace = 0)
   {
@@ -135,18 +264,39 @@ namespace embree
     arguments.buildProgress = buildProgress;
     arguments.userPtr = nullptr;
     
-    for (size_t i=0; i<10; i++)
-    {
-      /* we recreate the prims array here, as the builders modify this array */
-      for (size_t j=0; j<prims.size(); j++) prims[j] = prims_i[j];
+//	std::ofstream f("prims.txt");
 
-      std::cout << "iteration " << i << ": building BVH over " << prims.size() << " primitives, " << std::flush;
-      double t0 = getSeconds();
-      Node* root = (Node*) rtcBuildBVH(&arguments);
-      double t1 = getSeconds();
-      const float sah = root ? root->sah() : 0.0f;
-      std::cout << 1000.0f*(t1-t0) << "ms, " << 1E-6*double(prims.size())/(t1-t0) << " Mprims/s, sah = " << sah << " [DONE]" << std::endl;
-    }
+	//if (f.is_open()) {
+		/* we recreate the prims array here, as the builders modify this array */
+		for (size_t j = 0; j < prims.size(); j++) {
+			prims[j] = prims_i[j];
+		
+		}
+	//}
+	//else {
+	//	std::cout << "Unable to open prims.txt" << std::endl;
+	//}
+
+
+    std::cout << "Building BVH over " << prims.size() << " primitives, " << std::flush;
+    double t0 = getSeconds();
+    Node* root = (Node*) rtcBuildBVH(&arguments);
+    double t1 = getSeconds();
+    const float sah = root ? root->sah() : 0.0f;
+    std::cout << 1000.0f*(t1-t0) << "ms, " << 1E-6*double(prims.size())/(t1-t0) << " Mprims/s, sah = " << sah << " [DONE]" << std::endl;
+
+
+#ifdef	BUILD_MAP
+	std::map<unsigned int, long long> nodeMap;
+	buildMap(nodeMap, (InnerNode*)root);
+	printMap(nodeMap);
+#endif // BUILD_MAP
+
+
+#ifdef BUILD_TXT
+	buildTXT((InnerNode*)root);
+#endif // BUILD_TXT
+
 
     rtcReleaseBVH(bvh);
   }
@@ -158,10 +308,14 @@ namespace embree
     renderTile = renderTileStandard;
 
     /* create random bounding boxes */
-	const size_t N = 2000;//2300000;
-	const size_t extraSpace = 1000;//1000000;
+    //const size_t N = 2300000;
+	  const size_t N = 200;
+    const size_t extraSpace = 100;
+    
     avector<RTCBuildPrimitive> prims;
     prims.resize(N);
+
+	/*	Create primitives	*/
     for (size_t i=0; i<N; i++)
     {
       const float x = float(drand48());
@@ -182,12 +336,13 @@ namespace embree
       prims[i] = prim;
     }
 
+	/*	only want to test high quality build
     std::cout << "Low quality BVH build:" << std::endl;
     build(RTC_BUILD_QUALITY_LOW,prims,cfg);
 
     std::cout << "Normal quality BVH build:" << std::endl;
     build(RTC_BUILD_QUALITY_MEDIUM,prims,cfg);
-
+	*/
     std::cout << "High quality BVH build:" << std::endl;
     build(RTC_BUILD_QUALITY_HIGH,prims,cfg,extraSpace);
   }
