@@ -241,11 +241,18 @@ namespace embree
 
 	BVH4* bvh4 = nullptr;
 	BVH8* bvh8 = nullptr;
-	BVH8::AlignedNode* n = nullptr;
+	BVH4::AlignedNode* n4 = nullptr;
+	BVH8::AlignedNode* n8 = nullptr;
 	/* if the scene contains only triangles, the BVH4 acceleration structure can be obtained this way */
 	AccelData* accel = ((Accel*)scene)->intersectors.ptr;
-	if (accel->type == AccelData::TY_BVH4)
+	if (accel->type == AccelData::TY_BVH4) {
 		bvh4 = (BVH4*)accel;
+		std::cout << "scene contains only triangles";
+	}
+	else if (accel->type == AccelData::TY_BVH8) {
+		bvh8 = (BVH8*)accel;
+		std::cout << "scene contains only triangles";
+	}
 	/* if there are also other geometry types, one has to iterate over the toplevel AccelN structure */
 	else if (accel->type == AccelData::TY_ACCELN)
 	{
@@ -255,8 +262,10 @@ namespace embree
 				bvh4 = (BVH4*)accelN->accels[i]->intersectors.ptr;
 				BVH4::NodeRef node = bvh4->root;
 				std::cout << "TY_BVH4: node is: " << node.type();
-				if (node.type() == 0)
+				if (node.type() == 0) {
 					std::cout << " Aligned Node" << std::endl;
+					n4 = node.alignedNode();
+				}
 				else if (node.type() == 8 || node.type() == 9)
 					std::cout << " Leaf Node" << std::endl;
 			}
@@ -266,7 +275,7 @@ namespace embree
 				std::cout << "TY_BVH8: node is: " << node.type();
 				if (node.type() == 0) {
 					std::cout << " Aligned Node" << std::endl;
-					n = node.alignedNode();
+					n8 = node.alignedNode();
 				}
 				else if (node.type() == 8 || node.type() == 9)
 					std::cout << " Leaf Node" << std::endl;
