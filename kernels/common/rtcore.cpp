@@ -25,6 +25,9 @@
 #include "scene.h"
 #include "context.h"
 #include "../../include/embree3/rtcore_ray.h"
+//new
+#include "../../kernels/bvh/bvh.h"
+#include "../../kernels/geometry/trianglev.h"
 
 namespace embree
 {  
@@ -234,7 +237,42 @@ namespace embree
     RTC_CATCH_BEGIN;
     RTC_TRACE(rtcCommitScene);
     RTC_VERIFY_HANDLE(hscene);
-    scene->commit(false);
+	scene->commit(false);
+
+	BVH4* bvh4 = nullptr;
+	BVH8* bvh8 = nullptr;
+	BVH8::AlignedNode* n = nullptr;
+	/* if the scene contains only triangles, the BVH4 acceleration structure can be obtained this way */
+	AccelData* accel = ((Accel*)scene)->intersectors.ptr;
+	if (accel->type == AccelData::TY_BVH4)
+		bvh4 = (BVH4*)accel;
+	/* if there are also other geometry types, one has to iterate over the toplevel AccelN structure */
+	else if (accel->type == AccelData::TY_ACCELN)
+	{
+		AccelN* accelN = (AccelN*)(accel);
+		for (size_t i = 0; i<accelN->accels.size(); i++) {
+			if (accelN->accels[i]->intersectors.ptr->type == AccelData::TY_BVH4) {
+				bvh4 = (BVH4*)accelN->accels[i]->intersectors.ptr;
+				BVH4::NodeRef node = bvh4->root;
+				std::cout << "TY_BVH4: node is: " << node.type();
+				if (node.type() == 0)
+					std::cout << " Aligned Node" << std::endl;
+				else if (node.type() == 8 || node.type() == 9)
+					std::cout << " Leaf Node" << std::endl;
+			}
+			else if (accelN->accels[i]->intersectors.ptr->type == AccelData::TY_BVH8) {
+				bvh8 = (BVH8*)accelN->accels[i]->intersectors.ptr;
+				BVH8::NodeRef node = bvh8->root;
+				std::cout << "TY_BVH8: node is: " << node.type();
+				if (node.type() == 0) {
+					std::cout << " Aligned Node" << std::endl;
+					n = node.alignedNode();
+				}
+				else if (node.type() == 8 || node.type() == 9)
+					std::cout << " Leaf Node" << std::endl;
+			}
+		}
+	}
     RTC_CATCH_END2(scene);
   }
 
