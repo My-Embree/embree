@@ -247,11 +247,15 @@ namespace embree
 	AccelData* accel = ((Accel*)scene)->intersectors.ptr;
 	if (accel->type == AccelData::TY_BVH4) {
 		bvh4 = (BVH4*)accel;
-		std::cout << "scene contains only triangles";
+		BVH4::NodeRef node = bvh4->root;
+		n4 = node.alignedNode();
+		std::cout << "scene contains only triangles and node type is" << node.type();
 	}
 	else if (accel->type == AccelData::TY_BVH8) {
 		bvh8 = (BVH8*)accel;
-		std::cout << "scene contains only triangles";
+		BVH8::NodeRef node = bvh8->root;
+		n8 = node.alignedNode();
+		std::cout << "scene contains only triangles and node type is" << node.type();;
 	}
 	/* if there are also other geometry types, one has to iterate over the toplevel AccelN structure */
 	else if (accel->type == AccelData::TY_ACCELN)
