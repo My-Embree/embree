@@ -107,6 +107,7 @@ unsigned int createGroundPlane (RTCScene scene)
 
   rtcCommitGeometry(geom);
   unsigned int geomID = rtcAttachGeometry(scene,geom);
+
   rtcReleaseGeometry(geom);
   return geomID;
 }

@@ -56,12 +56,13 @@ namespace embree
 
   struct InnerNode : public Node
   {
-    BBox3fa bounds[2];
-    Node* children[2];
+	//changed to 4 bounds and children
+    BBox3fa bounds[4];
+    Node* children[4];
 
     InnerNode() {
-      bounds[0] = bounds[1] = empty;
-      children[0] = children[1] = nullptr;
+      bounds[0] = bounds[1] = bounds[2] = bounds[3] = empty;
+      children[0] = children[1] = children[2] = children[3] = nullptr;
 	  nodeType = 1;
     }
 
@@ -71,22 +72,22 @@ namespace embree
 
     static void* create (RTCThreadLocalAllocator alloc, unsigned int numChildren, void* userPtr)
     {
-      assert(numChildren == 2);
+      //assert(numChildren == 2);
       void* ptr = rtcThreadLocalAlloc(alloc,sizeof(InnerNode),16);
       return (void*) new (ptr) InnerNode;
     }
 
     static void  setChildren (void* nodePtr, void** childPtr, unsigned int numChildren, void* userPtr)
     {
-      assert(numChildren == 2);
-      for (size_t i=0; i<2; i++)
+      //assert(numChildren == 2);
+      for (size_t i=0; i<numChildren; i++)
         ((InnerNode*)nodePtr)->children[i] = (Node*) childPtr[i];
     }
 
     static void  setBounds (void* nodePtr, const RTCBounds** bounds, unsigned int numChildren, void* userPtr)
     {
-      assert(numChildren == 2);
-      for (size_t i=0; i<2; i++)
+      //assert(numChildren == 2);
+      for (size_t i=0; i<numChildren; i++)
         ((InnerNode*)nodePtr)->bounds[i] = *(const BBox3fa*) bounds[i];
     }
   };
@@ -140,28 +141,38 @@ namespace embree
 			  idQueue.pop();
 
 			  // leaf nodes only point to primitives, check node type first
-			  if (innerNode->nodeType == 1) {		// inner node
-				  nodeQueue.push(((InnerNode*)innerNode)->children[0]);
-				  idQueue.push(2 * idTemp + 1);
+			  if (!(innerNode == nullptr)) {
+				  if (innerNode->nodeType == 1) {		// inner node
+					  nodeQueue.push(((InnerNode*)innerNode)->children[0]);
+					  idQueue.push(4 * idTemp + 1);
 
-				  nodeQueue.push(((InnerNode*)innerNode)->children[1]);
-				  idQueue.push(2 * idTemp + 2);
+					  nodeQueue.push(((InnerNode*)innerNode)->children[1]);
+					  idQueue.push(4 * idTemp + 2);
 
-				  // write to text file, each line in file is a node
-				  f << idTemp << " " << innerNode->nodeType << " " << (unsigned int)innerNode->bounds[0].lower.x << " " << (unsigned int)innerNode->bounds[0].lower.y << " " <<
-					  (unsigned int)innerNode->bounds[0].lower.z << " " << (unsigned int)innerNode->bounds[0].upper.x << " " << (unsigned int)innerNode->bounds[0].upper.y << " " <<
-					  (unsigned int)innerNode->bounds[0].upper.z << " " << (unsigned int)innerNode->bounds[1].lower.x << " " << (unsigned int)innerNode->bounds[1].lower.y << " " <<
-					  (unsigned int)innerNode->bounds[1].lower.z << " " << (unsigned int)innerNode->bounds[1].upper.x << " " << (unsigned int)innerNode->bounds[1].upper.y << " " <<
-					  (unsigned int)innerNode->bounds[1].upper.z << "\n";
-			  }
-			  else {
-				  //std::cout << "LEAF NODE POPPED" << std::endl;
+					  if (((InnerNode*)innerNode)->children[2] != nullptr) {
+						  nodeQueue.push(((InnerNode*)innerNode)->children[2]);
+						  idQueue.push(4 * idTemp + 3);
+					  }
+					  if (((InnerNode*)innerNode)->children[3] != nullptr) {
+						  nodeQueue.push(((InnerNode*)innerNode)->children[3]);
+						  idQueue.push(4 * idTemp + 4);
+					  }
 
-				  // write to text file, each line in file is a node
-				  f << idTemp << " " << leafNode->nodeType << " " << (unsigned int)leafNode->bounds.lower.x << " " << (unsigned int)leafNode->bounds.lower.y << " " <<
-					  (unsigned int)leafNode->bounds.lower.z << " " << (unsigned int)leafNode->bounds.upper.x << " " << (unsigned int)leafNode->bounds.upper.y << " " <<
-					  (unsigned int)leafNode->bounds.upper.z << "\n";
+					  // write to text file, each line in file is a node
+					  f << idTemp << " " << innerNode->nodeType << " ";
+					  for (int i = 0; i < 4; i++) {
+						  f << (unsigned int)innerNode->bounds[i].lower.x << " " << (unsigned int)innerNode->bounds[i].lower.y << " " << (unsigned int)innerNode->bounds[i].lower.z << " " << (unsigned int)innerNode->bounds[i].upper.x << " " << (unsigned int)innerNode->bounds[i].upper.y << " " << (unsigned int)innerNode->bounds[i].upper.z << " ";
+					  }
+					  f << "\n";
 
+				  }
+				  else {
+					  // write to text file, each line in file is a node
+					  f << idTemp << " " << leafNode->nodeType << " " << (unsigned int)leafNode->bounds.lower.x << " " << (unsigned int)leafNode->bounds.lower.y << " " <<
+						  (unsigned int)leafNode->bounds.lower.z << " " << (unsigned int)leafNode->bounds.upper.x << " " << (unsigned int)leafNode->bounds.upper.y << " " <<
+						  (unsigned int)leafNode->bounds.upper.z << "\n";
+
+				  }
 			  }
 		  }
 
@@ -245,7 +256,7 @@ namespace embree
     arguments.byteSize = sizeof(arguments);
     arguments.buildFlags = RTC_BUILD_FLAG_DYNAMIC;
     arguments.buildQuality = quality;
-    arguments.maxBranchingFactor = 2;
+    arguments.maxBranchingFactor = 4;
     arguments.maxDepth = 1024;
     arguments.sahBlockSize = 1;
     arguments.minLeafSize = 1;
@@ -308,8 +319,7 @@ namespace embree
     renderTile = renderTileStandard;
 
     /* create random bounding boxes */
-    //const size_t N = 2300000;
-	  const size_t N = 200;
+	const size_t N = 200;
     const size_t extraSpace = 100;
     
     avector<RTCBuildPrimitive> prims;
