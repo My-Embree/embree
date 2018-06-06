@@ -27,7 +27,10 @@
 #include "../../include/embree3/rtcore_ray.h"
 //new
 #include "../../kernels/bvh/bvh.h"
-#include "../../kernels/geometry/trianglev.h"
+#include "c:\Users\cristosilva\Documents\embree\kernels\common\accel.h"
+#include <queue>
+#include <iostream>
+#include <fstream>
 
 namespace embree
 {  
@@ -230,7 +233,7 @@ namespace embree
     RTC_CATCH_END2(scene);
     return RTC_SCENE_FLAG_NONE;
   }
-  
+
   RTC_API void rtcCommitScene (RTCScene hscene) 
   {
     Scene* scene = (Scene*) hscene;
@@ -238,54 +241,170 @@ namespace embree
     RTC_TRACE(rtcCommitScene);
     RTC_VERIFY_HANDLE(hscene);
 	scene->commit(false);
-
+//=================================================================================================================
 	BVH4* bvh4 = nullptr;
 	BVH8* bvh8 = nullptr;
 	BVH4::AlignedNode* n4 = nullptr;
 	BVH8::AlignedNode* n8 = nullptr;
+	std::queue<BVH4::NodeRef> nodeQueue4;
+	std::queue<BVH8::NodeRef> nodeQueue8;
+	std::queue<int> idQueue;
+
+	std::ofstream f("toplevel.txt");
 	/* if the scene contains only triangles, the BVH4 acceleration structure can be obtained this way */
-	AccelData* accel = ((Accel*)scene)->intersectors.ptr;
-	if (accel->type == AccelData::TY_BVH4) {
-		bvh4 = (BVH4*)accel;
-		BVH4::NodeRef node = bvh4->root;
-		n4 = node.alignedNode();
-		std::cout << "scene contains only triangles and node type is" << node.type();
-	}
-	else if (accel->type == AccelData::TY_BVH8) {
-		bvh8 = (BVH8*)accel;
-		BVH8::NodeRef node = bvh8->root;
-		n8 = node.alignedNode();
-		std::cout << "scene contains only triangles and node type is" << node.type();;
-	}
-	/* if there are also other geometry types, one has to iterate over the toplevel AccelN structure */
-	else if (accel->type == AccelData::TY_ACCELN)
-	{
-		AccelN* accelN = (AccelN*)(accel);
-		for (size_t i = 0; i<accelN->accels.size(); i++) {
-			if (accelN->accels[i]->intersectors.ptr->type == AccelData::TY_BVH4) {
-				bvh4 = (BVH4*)accelN->accels[i]->intersectors.ptr;
-				BVH4::NodeRef node = bvh4->root;
-				std::cout << "TY_BVH4: node is: " << node.type();
-				if (node.type() == 0) {
-					std::cout << " Aligned Node" << std::endl;
-					n4 = node.alignedNode();
+//=================================================BVH4 ONLY==========================================
+	if (f.is_open()) {
+		AccelData* accel = ((Accel*)scene)->intersectors.ptr;
+		if (accel->type == AccelData::TY_BVH4) {
+			bvh4 = (BVH4*)accel;
+			BVH4::NodeRef node = bvh4->root;
+			f << "TY_BVH4: type: (" << node.type() << ")" << "\n";
+			// initialize queue with root node and root id
+			nodeQueue4.push(node);
+			idQueue.push(0);
+			while (!(nodeQueue4.empty())) {
+				BVH4::NodeRef tempNode = nodeQueue4.front();
+				nodeQueue4.pop();
+				int tempID = idQueue.front();
+				idQueue.pop();
+				f << "\t\t NodeID: ";
+				//leaf node
+				if (tempNode.type() == 8 || tempNode.type() == 9) {
+					f << tempID << " " << "Leaf Node \n";
 				}
-				else if (node.type() == 8 || node.type() == 9)
-					std::cout << " Leaf Node" << std::endl;
+				//aligned node (inner node)
+				else if(tempNode.type() == 0) {
+					n4 = tempNode.alignedNode();
+					f << tempID << " ";
+					for (int i = 0; i < 4; i++) {
+						nodeQueue4.push(n4->child(i));
+						idQueue.push(tempID * 4 + (i + 1));
+						f << n4->bounds(i).lower.x << " " << n4->bounds(i).lower.y << " " << n4->bounds(i).lower.z << " " << n4->bounds(i).upper.x << " " << n4->bounds(i).upper.y << " " << n4->bounds(i).upper.z << " ";
+					}
+					f << "\n";
+				}
+				else {
+					f << " unknown node " << tempNode.type() << "\n";
+				}
 			}
-			else if (accelN->accels[i]->intersectors.ptr->type == AccelData::TY_BVH8) {
-				bvh8 = (BVH8*)accelN->accels[i]->intersectors.ptr;
-				BVH8::NodeRef node = bvh8->root;
-				std::cout << "TY_BVH8: node is: " << node.type();
-				if (node.type() == 0) {
-					std::cout << " Aligned Node" << std::endl;
-					n8 = node.alignedNode();
+		}
+		//===================================BVH8 ONLY=============================
+		else if (accel->type == AccelData::TY_BVH8) {
+			bvh8 = (BVH8*)accel;
+			BVH8::NodeRef node = bvh8->root;
+			f << "TY_BVH8: type: (" << node.type() << ") \n" ;
+			// initialize queue with root node and root id
+			nodeQueue8.push(node);
+			idQueue.push(0);
+			while (!(nodeQueue8.empty())) {
+				BVH8::NodeRef tempNode = nodeQueue8.front();
+				nodeQueue8.pop();
+				int tempID = idQueue.front();
+				idQueue.pop();
+				int nodeType = tempNode.type();
+				f << "\t\t NodeID: ";
+				if (tempNode.type() == 8 || tempNode.type() == 9) {
+					f << tempID << " " << "Leaf Node \n";
 				}
-				else if (node.type() == 8 || node.type() == 9)
-					std::cout << " Leaf Node" << std::endl;
+				//if tempNode is aligned node (inner node)
+				else if(tempNode.type() == 0) {
+					n8 = tempNode.alignedNode();
+					f << tempID << " ";
+					for (int i = 0; i < 8; i++) {
+						nodeQueue8.push(n8->child(i));
+						idQueue.push(tempID * 8 + (i + 1));
+						f << n8->bounds(i).lower.x << " " << n8->bounds(i).lower.y << " " << n8->bounds(i).lower.z << " " << n8->bounds(i).upper.x << " " << n8->bounds(i).upper.y << " " << n8->bounds(i).upper.z << " ";
+					}
+					f << "\n";
+				}
+				else
+					f << "Unknown Node: " << tempNode.type() << "\n";
+			}
+		}
+		/* if there are also other geometry types, one has to iterate over the toplevel AccelN structure */
+	//============================================= BOTH ==============================================================
+		else if (accel->type == AccelData::TY_ACCELN)
+		{
+			AccelN* accelN = (AccelN*)(accel);
+			f << "TOP LEVEL consists of : \n";
+			for (size_t i = 0; i < accelN->accels.size(); i++) {
+				if (accelN->accels[i]->intersectors.ptr->type == AccelData::TY_BVH4) {
+					bvh4 = (BVH4*)accelN->accels[i]->intersectors.ptr;
+
+					BVH4::NodeRef node = bvh4->root;
+					f << "\tTY_BVH4: type: (" << node.type() << ") \n";
+
+					// initialize queue with root node and root id
+					nodeQueue4.push(node);
+					idQueue.push(0);
+					while (!(nodeQueue4.empty())) {
+						BVH4::NodeRef tempNode = nodeQueue4.front();
+						nodeQueue4.pop();
+						int tempID = idQueue.front();
+						idQueue.pop();
+						f << "\t\t NodeID: ";
+						//leaf node
+						if (tempNode.type() == 8 || tempNode.type() == 9) {
+							f << tempID << " Leaf Node \n";
+						}
+						//aligned node (inner node)
+						else if (tempNode.type() == 0){
+							n4 = tempNode.alignedNode();
+							f << tempID << " ";
+							for (int i = 0; i < 4; i++) {
+								nodeQueue4.push(n4->child(i));
+								idQueue.push(tempID * 4 + (i + 1));
+								f << n4->bounds(i).lower.x << " " << n4->bounds(i).lower.y << " " << n4->bounds(i).lower.z << " " << n4->bounds(i).upper.x << " " << n4->bounds(i).upper.y << " " << n4->bounds(i).upper.z << " ";
+							}
+							f << "\n";
+						}
+						//leaf node
+						//something else
+						else
+							f << tempID << " unknown node " << tempNode.type() << "\n";
+					}
+				}
+				else if (accelN->accels[i]->intersectors.ptr->type == AccelData::TY_BVH8) {
+					bvh8 = (BVH8*)accelN->accels[i]->intersectors.ptr;
+					BVH8::NodeRef node = bvh8->root;
+
+					f << "\tTY_BVH8: type: (" << node.type() << ") \n";
+					// initialize queue with root node and root id
+					nodeQueue8.push(node);
+					idQueue.push(0);
+					while (!(nodeQueue8.empty())) {
+						BVH8::NodeRef tempNode = nodeQueue8.front();
+						nodeQueue8.pop();
+						int tempID = idQueue.front();
+						idQueue.pop();
+						int nodeType = tempNode.type();
+						f << "\t\t NodeID: ";
+						//leaf node
+						if (tempNode.type() == 8 || tempNode.type() == 9) {
+							f << tempID << " Leaf Node \n";
+						}
+						//aligned node (inner node)
+						else if(tempNode.type() == 0){
+							n8 = tempNode.alignedNode();
+							f << tempID << " ";
+							for (int i = 0; i < 8; i++) {
+								nodeQueue8.push(n8->child(i));
+								idQueue.push(tempID * 8 + (i + 1));
+								f << n8->bounds(i).lower.x << " " << n8->bounds(i).lower.y << " " << n8->bounds(i).lower.z << " " << n8->bounds(i).upper.x << " " << n8->bounds(i).upper.y << " " << n8->bounds(i).upper.z << " ";
+							}
+							f << "\n";
+						}
+						//something else
+						else
+							f << tempID << "unknown node " << tempNode.type() << "\n";
+					}
+				}
 			}
 		}
 	}
+	else
+		std::cout << "unable to open txt file";
+//=================================================================================================================
     RTC_CATCH_END2(scene);
   }
 
