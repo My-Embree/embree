@@ -27,10 +27,11 @@
 #include "../../include/embree3/rtcore_ray.h"
 //new
 #include "../../kernels/bvh/bvh.h"
-#include "c:\Users\cristosilva\Documents\embree\kernels\common\accel.h"
+#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\accel.h"
 #include <queue>
 #include <iostream>
 #include <fstream>
+#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\scene_instance.h"
 
 namespace embree
 {  
@@ -333,6 +334,15 @@ namespace embree
 
 					BVH4::NodeRef node = bvh4->root;
 					f << "\tTY_BVH4: type: (" << node.type() << ") \n";
+
+					// access instance associated with current bvh
+					Instance* inst = ((Instance*)bvh4->scene->geometries[0].ptr);
+
+					f << "\tLocal to World Transformation Matrix: \n";
+					f << "\t\tvx = " << inst->local2world->l.vx << "\n";
+					f << "\t\tvy = " << inst->local2world->l.vy << "\n";
+					f << "\t\tvz = " << inst->local2world->l.vz << "\n";
+
 
 					// initialize queue with root node and root id
 					nodeQueue4.push(node);
