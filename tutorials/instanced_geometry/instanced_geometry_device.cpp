@@ -15,6 +15,8 @@
 // ======================================================================== //
 
 #include "../common/tutorial/tutorial_device.h"
+#include <iostream>
+#include <fstream>
 
 namespace embree {
 
@@ -131,7 +133,7 @@ extern "C" void device_init (char* cfg)
   /* create scene */
   g_scene = rtcNewScene(g_device);
   rtcSetSceneBuildQuality(g_scene,RTC_BUILD_QUALITY_LOW);
-  rtcSetSceneFlags(g_scene,RTC_SCENE_FLAG_COMPACT);
+  rtcSetSceneFlags(g_scene, RTC_SCENE_FLAG_DYNAMIC);
 
   /* create scene with 4 triangulated spheres */
   g_scene1 = rtcNewScene(g_device);
@@ -185,6 +187,8 @@ extern "C" void device_init (char* cfg)
   colors[3][2] = Vec3fa(0.75f, 0.75f, 0.f);
   colors[3][3] = Vec3fa(1.00f, 1.00f, 0.f);
 
+  g_mode = MODE_STREAM;
+
   /* set start render mode */
   if (g_mode == MODE_NORMAL) renderTile = renderTileStandard;
   else                       renderTile = renderTileStandardStream;
@@ -232,6 +236,16 @@ Vec3fa renderPixelStandard(float x, float y, const ISPCCamera& camera, RayStats&
     if (shadow.tfar >= 0.0f)
       color = color + diffuse*clamp(-dot(lightDir,Ns),0.0f,1.0f);
   }
+/*
+  std::cout << "Ray: " << ray.id << "\n";
+  std::cout << "Origin: " << ray.org.x << " " << ray.org.y << " " << ray.org.z << "\n";
+  //std::cout << "Start of Ray: " << ray.tnear << "\n";
+  std::cout << "Ray direction: " << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << "\n";
+  std::cout << "End of Ray: " << ray.tfar << " (tfar < tnear = inactive ray)\n";
+  std::cout << "PrimID: " << ray.primID << "\n";
+  std::cout << "GeomID: " << ray.geomID << "\n";
+  std::cout << "Hit Location: " << ray.Ng.x << " " << ray.Ng.y << " " << ray.Ng.z << "\n";
+*/
   return color;
 }
 
@@ -291,8 +305,9 @@ void renderTileStandardStream(int taskIndex,
   Vec3fa color_stream[TILE_SIZE_X*TILE_SIZE_Y];
   bool valid_stream[TILE_SIZE_X*TILE_SIZE_Y];
 
+
   /* generate stream of primary rays */
-  int N = 0;
+  volatile int N = 0;
   for (unsigned int y=y0; y<y1; y++) for (unsigned int x=x0; x<x1; x++)
   {
     /* ISPC workaround for mask == 0 */
@@ -304,6 +319,7 @@ void renderTileStandardStream(int taskIndex,
 
     /* initialize ray */
     Ray& primary = primary_stream[N];
+
     mask = 1; { // invalidates inactive rays
       primary.tnear() = mask ? 0.0f         : (float)(pos_inf);
       primary.tfar  = mask ? (float)(inf) : (float)(neg_inf);
@@ -313,6 +329,14 @@ void renderTileStandardStream(int taskIndex,
     N++;
     RayStats_addRay(stats);
   }
+
+  volatile size_t batchSize = TILE_SIZE_X * TILE_SIZE_Y;
+  std::ofstream f("rays.txt");
+  for (volatile int i=0; i<batchSize; ++i) {
+	  primary_stream[i].id = i;
+	  f << primary_stream[i].id << " " << primary_stream[i].org << " " << primary_stream[i].dir << "\n";
+  }
+  f.close();
 
   Vec3fa lightDir = normalize(Vec3fa(-1,-1,-1));
 

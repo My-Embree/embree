@@ -438,8 +438,10 @@ namespace embree
 			}
 		}
 	}
-	else
+	else {
 		std::cout << "ERROR: UNABLE TO OPEN TEXT FILE";
+	}
+	f.close();
 //=================================================================================================================
     RTC_CATCH_END2(scene);
   }
