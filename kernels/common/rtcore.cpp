@@ -528,7 +528,7 @@ namespace embree
 					b = boundsQueue.front();
 					boundsQueue.pop();
 
-					std::cout << tempID << " 2 " << num << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " "
+					f << tempID << " 2 " << tri->size() << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " "
 						<< b.upper.x << " " << b.upper.y << " " << b.upper.z << "\n";
 				}
 				//aligned node (inner node)
@@ -553,7 +553,7 @@ namespace embree
 					}
 
 					// write to txt file
-					std::cout << tempID << " 1 " << numChildren << " " << *std::min_element(lowerX.begin(), lowerX.end()) << " "
+					f << tempID << " 1 " << numChildren << " " << *std::min_element(lowerX.begin(), lowerX.end()) << " "
 						<< *std::min_element(lowerY.begin(), lowerY.end()) << " " << *std::min_element(lowerZ.begin(), lowerZ.end()) << " "
 						<< *std::max_element(upperX.begin(), upperX.end()) << " " << *std::max_element(upperY.begin(), upperY.end()) << " "
 						<< *std::max_element(upperZ.begin(), upperZ.end()) << "\n";
