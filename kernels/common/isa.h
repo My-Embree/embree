@@ -73,9 +73,9 @@ namespace embree
 #endif
 
 #if defined(EMBREE_TARGET_AVX) || defined(__AVX__)
-#if !defined(EMBREE_TARGET_SIMD8)
-#define EMBREE_TARGET_SIMD8
-#endif
+//#if !defined(EMBREE_TARGET_SIMD8)
+//#define EMBREE_TARGET_SIMD8
+//#endif
 #if defined(__AVX__) // if default ISA is >= AVX we treat AVX target as default target
 #define SELECT_SYMBOL_AVX(features,intersector)                 \
   if ((features & ISA) == ISA) intersector = isa::intersector;
@@ -88,9 +88,9 @@ namespace embree
 #endif
 
 #if defined(EMBREE_TARGET_AVX2)
-#if !defined(EMBREE_TARGET_SIMD8)
-#define EMBREE_TARGET_SIMD8
-#endif
+//#if !defined(EMBREE_TARGET_SIMD8)
+//#define EMBREE_TARGET_SIMD8
+//#endif
 #define SELECT_SYMBOL_AVX2(features,intersector) \
   if ((features & AVX2) == AVX2) intersector = avx2::intersector;
 #else

@@ -109,7 +109,8 @@ namespace embree {
 	extern "C" void device_init(char* cfg)
 	{
 		/* create scene */
-		g_scene = rtcNewScene(g_device);
+		embree::g_scene = rtcNewScene(g_device);
+		rtcSetSceneBuildQuality(g_scene, RTC_BUILD_QUALITY_MEDIUM);
 
 		/* add cube */
 		addCube(g_scene);
