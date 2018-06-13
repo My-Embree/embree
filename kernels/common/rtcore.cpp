@@ -28,12 +28,13 @@
 //new
 #include "../../kernels/bvh/bvh.h"
 #include "../../kernels/geometry/trianglev.h"
-#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\accel.h"
+#include "c:\Users\cristosilva\Documents\embree\kernels\common\accel.h"
 #include <queue>
 #include <iostream>
 #include <fstream>
-#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\scene_instance.h"
-#include "c:\Users\evanwaxman\Documents\My-Embree\embree\tutorials\common\tutorial\tutorial_device.h"
+#include "c:\Users\cristosilva\Documents\embree\kernels\common\scene_instance.h"
+#include "c:\Users\cristosilva\Documents\embree\tutorials\common\tutorial\tutorial_device.h"
+#include "c:\Users\cristosilva\Documents\embree\kernels\geometry\triangle.h"
 
 
 //#define PRINT_CONSOLE
@@ -525,6 +526,7 @@ namespace embree
 					size_t num;
 					BBox3fa b;
 					Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
+					Triangle4* tri2 = (Triangle4*)tempNode.leaf(num);
 
 					b = boundsQueue.front();
 					boundsQueue.pop();
@@ -539,11 +541,11 @@ namespace embree
 
 
 					for (size_t i = 0; i < num; i++) {
-						for (size_t j = 0; j < tri[i].size(); j++) {
-							p << tempID << " 1 " << tri[i].geomID(j) << " " << tri[i].primID(j) <<
-								" " << tri[i].v0.x[j] << " " << tri[i].v0.y[j] << " " << tri[i].v0.z[j] <<
-								" " << tri[i].v1.x[j] << " " << tri[i].v1.y[j] << " " << tri[i].v1.z[j] <<
-								" " << tri[i].v2.x[j] << " " << tri[i].v2.y[j] << " " << tri[i].v2.z[j] << "\n";
+						for (size_t j = 0; j < tri2[i].size(); j++) {
+							p << tempID << " 1 " << tri2[i].geomID(j) << " " << tri2[i].primID(j) <<
+								" " << tri2[i].v0.x[j] << " " << tri2[i].v0.y[j] << " " << tri2[i].v0.z[j] <<
+								" " << tri2[i].v0.x[j] - tri2[i].e1.x[j] << " " << tri2[i].v0.y[j] - tri2[i].e1.y[j] << " " << tri2[i].v0.z[j] - tri2[i].e1.z[j] <<
+								" " << tri2[i].v0.x[j] + tri2[i].e2.x[j] << " " << tri2[i].v0.y[j] + tri2[i].e2.y[j] << " " << tri2[i].v0.z[j] + tri2[i].e2.z[j] << "\n";
 						}
 					}
 
