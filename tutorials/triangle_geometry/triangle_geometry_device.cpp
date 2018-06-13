@@ -18,14 +18,20 @@
 
 namespace embree {
 
-	std::ofstream rayInfo("rayInfo.txt");
-	std::ofstream rayIntersect("rayIntersect.txt");
-	unsigned int rayID = 0;
-
 	/* scene data */
 	RTCScene g_scene = nullptr;
 	Vec3fa* face_colors = nullptr;
 	Vec3fa* vertex_colors = nullptr;
+
+	void renderTileStandardStream(int taskIndex,
+		int threadIndex,
+		int* pixels,
+		const unsigned int width,
+		const unsigned int height,
+		const float time,
+		const ISPCCamera& camera,
+		const int numTilesX,
+		const int numTilesY);
 
 	/* adds a cube to the scene */
 	unsigned int addCube(RTCScene scene_i)
@@ -127,6 +133,7 @@ namespace embree {
 
 		/* set start render mode */
 		renderTile = renderTileStandard;
+	
 		key_pressed_handler = device_key_pressed_default;
 	}
 
@@ -141,14 +148,7 @@ namespace embree {
 
 		/* intersect ray with scene */
 		rtcIntersect1(g_scene, &context, RTCRayHit_(ray));
-		//RayStats_addRay(stats);
-
-
-		ray.id = rayID++;
-		rayInfo << ray.id << " " << ray.org << " " << ray.dir << "\n";
-		rayIntersect << ray.id << " " << ray.geomID << " " << ray.primID << "\n";
-		
-
+		RayStats_addRay(stats);
 
 		/* shade pixels */
 		Vec3fa color = Vec3fa(0.0f);
@@ -163,7 +163,7 @@ namespace embree {
 
 			/* trace shadow ray */
 			rtcOccluded1(g_scene, &context, RTCRay_(shadow));
-			//RayStats_addShadowRay(stats);
+			RayStats_addShadowRay(stats);
 
 			/* add light contribution */
 			if (shadow.tfar >= 0.0f)
@@ -224,20 +224,11 @@ namespace embree {
 	{
 		const int numTilesX = (width + TILE_SIZE_X - 1) / TILE_SIZE_X;
 		const int numTilesY = (height + TILE_SIZE_Y - 1) / TILE_SIZE_Y;
-		//parallel_for(size_t(0), size_t(numTilesX*numTilesY), [&](const range<size_t>& range) {
-		//	const int threadIndex = (int)TaskScheduler::threadIndex();
-		//	for (size_t i = range.begin(); i<range.end(); i++)
-		//		renderTileTask((int)i, threadIndex, pixels, width, height, time, camera, numTilesX, numTilesY);
-		//});
-
-		rayID = 0;
-		rayInfo.open("rayInfo.txt", std::fstream::out);
-		rayIntersect.open("rayIntersect.txt", std::fstream::out);
-		for (int i = 0; i < (numTilesX*numTilesY); ++i) {
-			renderTileTask((int)i, 0, pixels, width, height, time, camera, numTilesX, numTilesY);
-		}
-		rayInfo.close();
-		rayIntersect.close();
+		parallel_for(size_t(0), size_t(numTilesX*numTilesY), [&](const range<size_t>& range) {
+			const int threadIndex = (int)TaskScheduler::threadIndex();
+			for (size_t i = range.begin(); i<range.end(); i++)
+				renderTileTask((int)i, threadIndex, pixels, width, height, time, camera, numTilesX, numTilesY);
+		});
 	}
 
 	/* called by the C++ code for cleanup */
