@@ -28,12 +28,12 @@
 //new
 #include "../../kernels/bvh/bvh.h"
 #include "../../kernels/geometry/trianglev.h"
-#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\accel.h"
+#include "c:\Users\cristosilva\Documents\embree\kernels\common\accel.h"
 #include <queue>
 #include <iostream>
 #include <fstream>
-#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\scene_instance.h"
-#include "c:\Users\evanwaxman\Documents\My-Embree\embree\tutorials\common\tutorial\tutorial_device.h"
+#include "c:\Users\cristosilva\Documents\embree\kernels\common\scene_instance.h"
+#include "c:\Users\cristosilva\Documents\embree\tutorials\common\tutorial\tutorial_device.h"
 
 
 //#define PRINT_CONSOLE
@@ -498,6 +498,7 @@ namespace embree
 	std::queue<BBox3fa> boundsQueue;		// for leaf bounds
 
 	std::ofstream f("bvh.txt");
+	std::ofstream primFile("prim.txt");
 	/* if the scene contains only triangles, the BVH4 acceleration structure can be obtained this way */
 	//=================================================BVH4 ONLY==========================================
 	if (f.is_open()) {
@@ -530,6 +531,16 @@ namespace embree
 
 					f << tempID << " 2 " << tri->size() << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " "
 						<< b.upper.x << " " << b.upper.y << " " << b.upper.z << "\n";
+
+					for (size_t i = 0; i<num; i++) {
+						for (size_t j = 0; j<tri[i].size(); j++) {
+							primFile << tempID << " 1 " << tri[i].primID(j) << " " << tri[i].geomID(j) 
+								<< " " << tri[i].v0.x[j] << " " << tri[i].v0.y[j] << " " << tri[i].v0.z[j]
+							    << " " << tri[i].v1.x[j] << " " << tri[i].v1.y[j] << " " << tri[i].v1.z[j]
+								<< " " << tri[i].v2.x[j] << " " << tri[i].v2.y[j] << " " << tri[i].v2.z[j] << "\n";
+						}
+					}
+
 				}
 				//aligned node (inner node)
 				else if (tempNode.type() == 0) {
