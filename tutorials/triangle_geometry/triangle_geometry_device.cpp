@@ -145,7 +145,8 @@ namespace embree {
 
 
 		ray.id = rayID++;
-		rayInfo << ray.id << " " << ray.org << " " << ray.dir << "\n";
+		rayInfo << ray.id << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
+			" " << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << "\n";
 		rayIntersect << ray.id << " " << ray.geomID << " " << ray.primID << "\n";
 		
 

@@ -498,6 +498,7 @@ namespace embree
 	std::queue<BBox3fa> boundsQueue;		// for leaf bounds
 
 	std::ofstream f("bvh.txt");
+	std::ofstream p("primitives.txt");
 	/* if the scene contains only triangles, the BVH4 acceleration structure can be obtained this way */
 	//=================================================BVH4 ONLY==========================================
 	if (f.is_open()) {
@@ -513,7 +514,7 @@ namespace embree
 			while (!(nodeQueue4.empty())) {
 				BVH4::NodeRef tempNode = nodeQueue4.front();
 				nodeQueue4.pop();
-				int tempID = idQueue.front();
+				unsigned int tempID = idQueue.front();
 				idQueue.pop();
 				//std::cout << "\tNodeID: ";
 
@@ -523,13 +524,29 @@ namespace embree
 				if (tempNode.type() == 9 || tempNode.type() == 10) {
 					size_t num;
 					BBox3fa b;
-					const Triangle4v* tri = (const Triangle4v*)tempNode.leaf(num);
+					Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
 
 					b = boundsQueue.front();
 					boundsQueue.pop();
 
+					// change primID to equal leaf node id
+					//tri[0].primIDs[0] = tempID;
+
+					//std::cout << tri[0].primIDs[0] << std::endl;
+
 					f << tempID << " 2 " << tri->size() << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " "
 						<< b.upper.x << " " << b.upper.y << " " << b.upper.z << "\n";
+
+
+					for (size_t i = 0; i < num; i++) {
+						for (size_t j = 0; j < tri[i].size(); j++) {
+							p << tempID << " 1 " << tri[i].geomID(j) << " " << tri[i].primID(j) <<
+								" " << tri[i].v0.x[j] << " " << tri[i].v0.y[j] << " " << tri[i].v0.z[j] <<
+								" " << tri[i].v1.x[j] << " " << tri[i].v1.y[j] << " " << tri[i].v1.z[j] <<
+								" " << tri[i].v2.x[j] << " " << tri[i].v2.y[j] << " " << tri[i].v2.z[j] << "\n";
+						}
+					}
+
 				}
 				//aligned node (inner node)
 				else if (tempNode.type() == 0) {
@@ -586,7 +603,7 @@ namespace embree
 			while (!(nodeQueue8.empty())) {
 				BVH8::NodeRef tempNode = nodeQueue8.front();
 				nodeQueue8.pop();
-				int tempID = idQueue.front();
+				unsigned int tempID = idQueue.front();
 				idQueue.pop();
 				//std::cout << "\tNodeID: ";
 
@@ -594,10 +611,13 @@ namespace embree
 				if (tempNode.type() == 9) {
 					size_t num;
 					BBox3fa b;
-					const Triangle4v* tri = (const Triangle4v*)tempNode.leaf(num);
+					Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
 
 					b = boundsQueue.front();
 					boundsQueue.pop();
+
+					// change primID to equal leaf node id
+					//tri[0].primID() = tempID;
 
 					f << tempID << " 2 " << num << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " " 
 						<< b.upper.x << " " << b.upper.y << " " << b.upper.z << "\n";
@@ -763,6 +783,7 @@ namespace embree
 		std::cout << "ERROR: UNABLE TO OPEN TEXT FILE";
 	}
 	f.close();
+	p.close();
 #endif // PRINT_CONSOLE
 
 
