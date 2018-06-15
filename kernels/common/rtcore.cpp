@@ -28,13 +28,13 @@
 //new
 #include "../../kernels/bvh/bvh.h"
 #include "../../kernels/geometry/trianglev.h"
-#include "c:\Users\cristosilva\Documents\embree\kernels\common\accel.h"
+#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\accel.h"
 #include <queue>
 #include <iostream>
 #include <fstream>
-#include "c:\Users\cristosilva\Documents\embree\kernels\common\scene_instance.h"
-#include "c:\Users\cristosilva\Documents\embree\tutorials\common\tutorial\tutorial_device.h"
-#include "c:\Users\cristosilva\Documents\embree\kernels\geometry\triangle.h"
+#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\common\scene_instance.h"
+#include "c:\Users\evanwaxman\Documents\My-Embree\embree\tutorials\common\tutorial\tutorial_device.h"
+#include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\geometry\triangle.h"
 
 
 //#define PRINT_CONSOLE
