@@ -25,6 +25,10 @@ extern "C" ISPCScene* g_ispc_scene;
 extern "C" bool g_changed;
 extern "C" int g_instancing_mode;
 
+std::ofstream rayInfo("rayInfo.txt");
+std::ofstream rayIntersect("rayIntersect.txt");
+unsigned long long rayID = 0;
+
 /* scene data */
 RTCScene g_scene = nullptr;
 bool g_subdiv_mode = false;
@@ -257,7 +261,16 @@ Vec3fa renderPixelStandard(float x, float y, const ISPCCamera& camera, RayStats&
   rtcInitIntersectContext(&context);
   context.flags = g_iflags_coherent;
   rtcIntersect1(g_scene,&context,RTCRayHit_(ray));
-  RayStats_addRay(stats);
+  //RayStats_addRay(stats);
+
+
+  // write ray info to ray txt files
+  ray.id = rayID++;
+  rayInfo << ray.id << " " << ray.tfar << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
+	  " " << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << "\n";
+  rayIntersect << ray.id << " " << ray.geomID << " " << ray.primID << "\n";
+
+
 
   /* shade background black */
   if (ray.geomID == RTC_INVALID_GEOMETRY_ID) {
@@ -389,11 +402,24 @@ extern "C" void device_render (int* pixels,
   /* render image */
   const int numTilesX = (width +TILE_SIZE_X-1)/TILE_SIZE_X;
   const int numTilesY = (height+TILE_SIZE_Y-1)/TILE_SIZE_Y;
+
+  /*
   parallel_for(size_t(0),size_t(numTilesX*numTilesY),[&](const range<size_t>& range) {
     const int threadIndex = (int)TaskScheduler::threadIndex();
     for (size_t i=range.begin(); i<range.end(); i++)
       renderTileTask((int)i,threadIndex,pixels,width,height,time,camera,numTilesX,numTilesY);
   }); 
+  */
+
+  rayID = 0;
+  rayInfo.open("rayInfo.txt", std::fstream::out);
+  rayIntersect.open("rayIntersect.txt", std::fstream::out);
+  for (int i = 0; i < (numTilesX*numTilesY); ++i) {
+	  renderTileTask((int)i, 0, pixels, width, height, time, camera, numTilesX, numTilesY);
+  }
+
+  rayInfo.close();
+  rayIntersect.close();
   //rtcDebug();
 }
 

@@ -20,7 +20,7 @@ namespace embree {
 
 	std::ofstream rayInfo("rayInfo.txt");
 	std::ofstream rayIntersect("rayIntersect.txt");
-	unsigned int rayID = 0;
+	unsigned long long rayID = 0;
 
 	/* scene data */
 	RTCScene g_scene = nullptr;
@@ -28,7 +28,7 @@ namespace embree {
 	Vec3fa* vertex_colors = nullptr;
 
 	/* adds a cube to the scene */
-	unsigned int addCube(RTCScene scene_i)
+	unsigned int addCube(RTCScene scene_i, int i)
 	{
 		/* create a triangulated cube with 12 triangles and 8 vertices */
 		RTCGeometry mesh = rtcNewGeometry(g_device, RTC_GEOMETRY_TYPE_TRIANGLE);
@@ -39,14 +39,14 @@ namespace embree {
 
 		/* set vertices and vertex colors */
 		Vertex* vertices = (Vertex*)rtcSetNewGeometryBuffer(mesh, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, sizeof(Vertex), 8);
-		vertex_colors[0] = Vec3fa(0, 0, 0); vertices[0].x = -1; vertices[0].y = -1; vertices[0].z = -1;
-		vertex_colors[1] = Vec3fa(0, 0, 1); vertices[1].x = -1; vertices[1].y = -1; vertices[1].z = +1;
-		vertex_colors[2] = Vec3fa(0, 1, 0); vertices[2].x = -1; vertices[2].y = +1; vertices[2].z = -1;
-		vertex_colors[3] = Vec3fa(0, 1, 1); vertices[3].x = -1; vertices[3].y = +1; vertices[3].z = +1;
-		vertex_colors[4] = Vec3fa(1, 0, 0); vertices[4].x = +1; vertices[4].y = -1; vertices[4].z = -1;
-		vertex_colors[5] = Vec3fa(1, 0, 1); vertices[5].x = +1; vertices[5].y = -1; vertices[5].z = +1;
-		vertex_colors[6] = Vec3fa(1, 1, 0); vertices[6].x = +1; vertices[6].y = +1; vertices[6].z = -1;
-		vertex_colors[7] = Vec3fa(1, 1, 1); vertices[7].x = +1; vertices[7].y = +1; vertices[7].z = +1;
+		vertex_colors[0] = Vec3fa(0, 0, 0); vertices[0].x = -1+i; vertices[0].y = -1; vertices[0].z = -1 + i;
+		vertex_colors[1] = Vec3fa(0, 0, 1); vertices[1].x = -1 + i; vertices[1].y = -1; vertices[1].z = +1 + i;
+		vertex_colors[2] = Vec3fa(0, 1, 0); vertices[2].x = -1 + i; vertices[2].y = +1; vertices[2].z = -1 + i;
+		vertex_colors[3] = Vec3fa(0, 1, 1); vertices[3].x = -1 + i; vertices[3].y = +1; vertices[3].z = +1 + i;
+		vertex_colors[4] = Vec3fa(1, 0, 0); vertices[4].x = +1 + i; vertices[4].y = -1; vertices[4].z = -1 + i;
+		vertex_colors[5] = Vec3fa(1, 0, 1); vertices[5].x = +1 + i; vertices[5].y = -1; vertices[5].z = +1 + i;
+		vertex_colors[6] = Vec3fa(1, 1, 0); vertices[6].x = +1 + i; vertices[6].y = +1; vertices[6].z = -1 + i;
+		vertex_colors[7] = Vec3fa(1, 1, 1); vertices[7].x = +1 + i; vertices[7].y = +1; vertices[7].z = +1 + i;
 
 		/* set triangles and face colors */
 		int tri = 0;
@@ -117,7 +117,10 @@ namespace embree {
 		rtcSetSceneBuildQuality(g_scene, RTC_BUILD_QUALITY_MEDIUM);
 
 		/* add cube */
-		addCube(g_scene);
+		for (int i = 0; i < 9; i+=3) {
+			addCube(g_scene,i);
+		}
+		//addCube(g_scene);
 
 		/* add ground plane */
 		addGroundPlane(g_scene);
@@ -145,11 +148,11 @@ namespace embree {
 
 
 		ray.id = rayID++;
-		rayInfo << ray.id << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
+		rayInfo << ray.id << " " << ray.tfar << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
 			" " << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << "\n";
 		rayIntersect << ray.id << " " << ray.geomID << " " << ray.primID << "\n";
 		
-
+		
 
 		/* shade pixels */
 		Vec3fa color = Vec3fa(0.0f);
