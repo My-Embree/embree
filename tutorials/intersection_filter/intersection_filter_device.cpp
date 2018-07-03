@@ -18,6 +18,10 @@
 
 namespace embree {
 
+	std::ofstream rayInfo("rayInfo.txt");
+	std::ofstream rayIntersect("rayIntersect.txt");
+	unsigned int rayID = 0;
+
 /* scene data */
 RTCScene g_scene = nullptr;
 Vec3fa* colors = nullptr;
@@ -88,7 +92,12 @@ Vec3fa renderPixelStandard(float x, float y, const ISPCCamera& camera, RayStats&
 
     /* intersect ray with scene */
     rtcIntersect1(g_scene,&context.context,RTCRayHit_(primary));
-    RayStats_addRay(stats);
+    //RayStats_addRay(stats);
+
+	primary.ray.id = rayID++;
+	rayInfo << primary.ray.id << " " << primary.ray.tfar << " " << primary.ray.org.x << " " << primary.ray.org.y << " " << primary.ray.org.z <<
+		" " << primary.ray.dir.x << " " << primary.ray.dir.y << " " << primary.ray.dir.z << "\n";
+	rayIntersect << primary.ray.id << " " << primary.ray.geomID << " " << primary.ray.primID << "\n";
 
     /* shade pixels */
     if (primary.ray.geomID == RTC_INVALID_GEOMETRY_ID)
@@ -739,6 +748,7 @@ extern "C" void device_init (char* cfg)
   rtcCommitScene (g_scene);
 
   /* set start render mode */
+  g_mode = MODE_NORMAL;
   if (g_mode == MODE_NORMAL) renderTile = renderTileStandard;
   else                       renderTile = renderTileStandardStream;
   key_pressed_handler = device_key_pressed_default;
@@ -765,11 +775,23 @@ extern "C" void device_render (int* pixels,
 {
   const int numTilesX = (width +TILE_SIZE_X-1)/TILE_SIZE_X;
   const int numTilesY = (height+TILE_SIZE_Y-1)/TILE_SIZE_Y;
+
+  /*
   parallel_for(size_t(0),size_t(numTilesX*numTilesY),[&](const range<size_t>& range) {
     const int threadIndex = (int)TaskScheduler::threadIndex();
     for (size_t i=range.begin(); i<range.end(); i++)
       renderTileTask((int)i,threadIndex,pixels,width,height,time,camera,numTilesX,numTilesY);
   }); 
+  */
+
+  rayID = 0;
+  rayInfo.open("rayInfo.txt", std::fstream::out);
+  rayIntersect.open("rayIntersect.txt", std::fstream::out);
+  for (int i = 0; i < (numTilesX*numTilesY); ++i) {
+	  renderTileTask((int)i, 0, pixels, width, height, time, camera, numTilesX, numTilesY);
+  }
+  rayInfo.close();
+  rayIntersect.close();
 }
 
 /* called by the C++ code for cleanup */
