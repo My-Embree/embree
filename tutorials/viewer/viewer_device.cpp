@@ -27,7 +27,7 @@ extern "C" int g_instancing_mode;
 
 std::ofstream rayInfo("rayInfo.txt");
 std::ofstream rayIntersect("rayIntersect.txt");
-unsigned long long rayID = 0;
+unsigned int rayID = 0;
 
 /* scene data */
 RTCScene g_scene = nullptr;
@@ -421,6 +421,8 @@ extern "C" void device_render (int* pixels,
   rayInfo.close();
   rayIntersect.close();
   //rtcDebug();
+
+  std::cout << "RAY TRACING DONE" << std::endl;
 }
 
 /* called by the C++ code for cleanup */

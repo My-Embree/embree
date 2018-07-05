@@ -40,6 +40,7 @@
 
 
 //#define PRINT_CONSOLE
+#define SKIP
 
 namespace embree
 {  
@@ -252,6 +253,7 @@ namespace embree
 	scene->commit(false);
 
 
+#ifndef SKIP
 
 	
 #ifdef PRINT_CONSOLE
@@ -797,7 +799,7 @@ namespace embree
 			while (!(nodeQueue4.empty())) {
 				BVH4::NodeRef tempNode = nodeQueue4.front();
 				nodeQueue4.pop();
-				unsigned long long tempID = idQueue.front();
+				const unsigned long long tempID = idQueue.front();
 				idQueue.pop();
 				//std::cout << "\tNodeID: ";
 				//std::cout << tempNode.type() << std::endl;
@@ -907,7 +909,7 @@ namespace embree
 			while (!(nodeQueue8.empty())) {
 				BVH8::NodeRef tempNode = nodeQueue8.front();
 				nodeQueue8.pop();
-				unsigned long long tempID = idQueue.front();
+				const unsigned long long tempID = idQueue.front();
 				idQueue.pop();
 				//std::cout << "\tNodeID: ";
 
@@ -1038,7 +1040,7 @@ namespace embree
 					while (!(nodeQueue4.empty())) {
 						BVH4::NodeRef tempNode = nodeQueue4.front();
 						nodeQueue4.pop();
-						unsigned long long tempID = idQueue.front();
+						const unsigned long long tempID = idQueue.front();
 						idQueue.pop();
 						std::cout << "\t\tNodeID: ";
 						//leaf node
@@ -1087,7 +1089,7 @@ namespace embree
 					while (!(nodeQueue8.empty())) {
 						BVH8::NodeRef tempNode = nodeQueue8.front();
 						nodeQueue8.pop();
-						unsigned long long tempID = idQueue.front();
+						const unsigned long long tempID = idQueue.front();
 						idQueue.pop();
 						int nodeType = tempNode.type();
 						std::cout << "\t\tNodeID: ";
@@ -1121,7 +1123,7 @@ namespace embree
 	f.close();
 	p.close();
 #endif // PRINT_CONSOLE
-
+#endif // SKIP
 
 
     RTC_CATCH_END2(scene);
