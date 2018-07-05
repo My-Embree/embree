@@ -62,7 +62,7 @@
     //float time;               //!< Time of this ray for motion blur.
     float tfar;               //!< End of ray segment
     unsigned int mask;        //!< used to mask out objects during traversal
-    unsigned long long id;          //!< ray ID
+    unsigned int id;          //!< ray ID
     unsigned int flags;       //!< ray flags
 
   public:

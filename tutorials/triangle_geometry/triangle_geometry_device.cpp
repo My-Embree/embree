@@ -116,6 +116,9 @@ namespace embree {
 		embree::g_scene = rtcNewScene(g_device);
 		rtcSetSceneBuildQuality(g_scene, RTC_BUILD_QUALITY_MEDIUM);
 
+		RTCSceneFlags flags = rtcGetSceneFlags(g_scene);
+		rtcSetSceneFlags(g_scene, RTC_SCENE_FLAG_COMPACT | flags);
+
 		/* add cube */
 		for (int i = 0; i < 9; i+=3) {
 			addCube(g_scene,i);
@@ -148,9 +151,9 @@ namespace embree {
 
 
 		ray.id = rayID++;
-		rayInfo << ray.id << " " << ray.tfar << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
+		rayInfo << rayID << " " << ray.tfar << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
 			" " << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << "\n";
-		rayIntersect << ray.id << " " << ray.geomID << " " << ray.primID << "\n";
+		rayIntersect << rayID << " " << ray.geomID << " " << ray.primID << "\n";
 		
 		
 
