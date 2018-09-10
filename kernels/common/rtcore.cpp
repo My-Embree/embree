@@ -39,7 +39,7 @@
 #include "c:\Users\evanwaxman\Documents\My-Embree\embree\kernels\subdiv\bezier_curve.h"
 
 
-//#define PRINT_CONSOLE
+#define PRINT_CONSOLE
 #define SKIP
 
 namespace embree
@@ -260,8 +260,6 @@ namespace embree
 	//=================================================================================================================
 	BVH4* bvh4 = nullptr;
 	BVH8* bvh8 = nullptr;
-	BVH4::UnalignedNode* un4 = nullptr;
-	BVH8::UnalignedNode* un8 = nullptr;
 	BVH4::AlignedNode* n4 = nullptr;
 	BVH8::AlignedNode* n8 = nullptr;
 	std::queue<BVH4::NodeRef> nodeQueue4;
@@ -269,13 +267,25 @@ namespace embree
 	std::queue<unsigned long long> idQueue;
 	std::queue<BBox3fa> boundsQueue;		// for leaf bounds
 
+	vfloat4 rootLowX, rootUpX;
+	vfloat4 rootLowY, rootUpY;
+	vfloat4 rootLowZ, rootUpZ;
+
 	/* if the scene contains only triangles, the BVH4 acceleration structure can be obtained this way */
+	//=================================================BVH4 ONLY==========================================
+	if (f.is_open()) {
 		AccelData* accel = ((Accel*)scene)->intersectors.ptr;
-		//=================================================BVH4 ONLY==========================================
 		if (accel->type == AccelData::TY_BVH4) {
 			bvh4 = (BVH4*)accel;
 			BVH4::NodeRef node = bvh4->root;
-			std::cout << "TY_BVH4:\n";
+			n4 = node.alignedNode();
+			rootLowX = n4->lower_x;
+			rootUpX = n4->upper_x;
+			rootLowY = n4->lower_y;
+			rootUpY = n4->upper_y;
+			rootLowZ = n4->lower_z;
+			rootUpZ = n4->upper_z;
+			//std::cout << "TY_BVH4:\n";
 
 			// initialize queue with root node and root id
 			nodeQueue4.push(node);
@@ -283,16 +293,17 @@ namespace embree
 			while (!(nodeQueue4.empty())) {
 				BVH4::NodeRef tempNode = nodeQueue4.front();
 				nodeQueue4.pop();
-				unsigned long long tempID = idQueue.front();
+				const unsigned long long tempID = idQueue.front();
 				idQueue.pop();
 				//std::cout << "\tNodeID: ";
+				//std::cout << tempNode.type() << std::endl;
 
-				//leaf node
-				if (tempNode.type() == 9 || tempNode.type() == 10) {
-					std::cout << "\tNodeID: " << tempID << ", Node Type: Leaf Node (" << tempNode.type() << ")\n";
 
+				if (tempNode.type() == 9 || tempNode.type() == 10) {	//leaf node
 					size_t num;
 					BBox3fa b;
+					Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
+					Triangle4* tri2 = (Triangle4*)tempNode.leaf(num);
 
 					b = boundsQueue.front();
 					boundsQueue.pop();
@@ -302,31 +313,45 @@ namespace embree
 						Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
 						Triangle4* tri2 = (Triangle4*)tempNode.leaf(num);
 
-						for (size_t i = 0; i < num; i++) {
-							for (size_t j = 0; j < tri2[i].size(); j++) {
-								std::cout << "\t\t\tGeomID: " << tri2[i].geomID(j) << ", PrimID: " << tri2[i].primID(j) <<
-									", Bounds: [(" << tri2[i].v0.x[j] << ", " << tri2[i].v0.y[j] << ", " << tri2[i].v0.z[j] <<
-									"); (" << tri2[i].v0.x[j] - tri2[i].e1.x[j] << ", " << tri2[i].v0.y[j] - tri2[i].e1.y[j] << ", " << tri2[i].v0.z[j] - tri2[i].e1.z[j] <<
-									"); (" << tri2[i].v0.x[j] + tri2[i].e2.x[j] << ", " << tri2[i].v0.y[j] + tri2[i].e2.y[j] << ", " << tri2[i].v0.z[j] + tri2[i].e2.z[j] << ")]\n";
-							}
-						}
+						//tri[0].primIDs[0] = tempID;
+						//std::cout << tri[0].primIDs[0] << std::endl;
+
+
+						// write leaf node to bvh.txt
+						std::cout << "FLOAT COORDINATES" << tempID << " 2 " << tri->size() << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " "
+							<< b.upper.x << " " << b.upper.y << " " << b.upper.z << "\n";
+
+
+						// calculate 8-bit coordinates
+						uint8_t childLowX = (uint8_t)((b.lower.x - rootLowX) / (rootUpX - rootLowX)) * 256;
+						uint8_t childUpY;
+						uint8_t childLowY;
+						uint8_t childUpY;
+						uint8_t childLowZ;
+						uint8_t childUpZ;
+
+						
+
+						std::cout << "8-BIT COORDINATES" << tempID << " 2 " << tri->size() << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " "
+							<< b.upper.x << " " << b.upper.y << " " << b.upper.z << "\n";
+
 					}
 					else if (scene->geometries[0]->gtype == 4) {	// GTY_FLAT_BEZIER_CURVE
-						//const PrimRef& prim = (PrimRef)tempNode.leaf(num);
+																	//const PrimRef& prim = (PrimRef)tempNode.leaf(num);
 						Curve4v* curve = (Curve4v*)tempNode.leaf(num);
 						BezierCurve3fa* bezCurve = (BezierCurve3fa*)tempNode.leaf(num);
 						QuadraticBezierCurve3fa* quadBezCurve = (QuadraticBezierCurve3fa*)tempNode.leaf(num);
 
 						//std::cout << "\t\t\tGeomID: " << curve->geomID(0) << ", PrimID: " << curve->primID << ", Bounds: ";
-							//prim->bounds() << "\n";
+						//prim->bounds() << "\n";
 					}
 					else {
 						std::cout << "UNKNOWN GEOM TYPE\n";
 					}
+
 				}
 				//aligned node (inner node)
 				else if (tempNode.type() == 0) {
-					std::cout << "\tNodeID: " << tempID << ", Node Type: Aligned Node (" << tempNode.type() << ")\n";
 					n4 = tempNode.alignedNode();
 					vector <float> lowerX;
 					vector <float> lowerY;
@@ -344,9 +369,15 @@ namespace embree
 						upperY.push_back(n4->bounds(i).upper.y);
 						upperZ.push_back(n4->bounds(i).upper.z);
 						numChildren++;
-
-						std::cout << "\t\tChild " << i << " bounds: " << n4->bounds(i) << ", NodeID: " << tempID * 4 + (i + 1) << "\n";
 					}
+
+
+
+					// write to txt file
+					std::cout << tempID << " 1 " << numChildren << " " << *std::min_element(lowerX.begin(), lowerX.end()) << " "
+						<< *std::min_element(lowerY.begin(), lowerY.end()) << " " << *std::min_element(lowerZ.begin(), lowerZ.end()) << " "
+						<< *std::max_element(upperX.begin(), upperX.end()) << " " << *std::max_element(upperY.begin(), upperY.end()) << " "
+						<< *std::max_element(upperZ.begin(), upperZ.end()) << "\n";
 
 					// push children to queue
 					for (int i = 0; i < 4; i++) {
@@ -371,24 +402,23 @@ namespace embree
 		else if (accel->type == AccelData::TY_BVH8) {
 			bvh8 = (BVH8*)accel;
 			BVH8::NodeRef node = bvh8->root;
-			std::cout << "TY_BVH8:\n";
+			//std::cout << "TY_BVH8:\n";
 
 			// initialize queue with root node and root id
 			nodeQueue8.push(node);
 			idQueue.push(0);
 			while (!(nodeQueue8.empty())) {
 				BVH8::NodeRef tempNode = nodeQueue8.front();
-				nodeQueue4.pop();
-				unsigned long long tempID = idQueue.front();
+				nodeQueue8.pop();
+				const unsigned long long tempID = idQueue.front();
 				idQueue.pop();
 				//std::cout << "\tNodeID: ";
 
-				//leaf node
-				if (tempNode.type() == 9 || tempNode.type() == 10) {
-					std::cout << "\tNodeID: " << tempID << ", Node Type: Leaf Node (" << tempNode.type() << ")\n";
-
+				if (tempNode.type() == 9 || tempNode.type() == 10) {	//leaf node
 					size_t num;
 					BBox3fa b;
+					Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
+					Triangle4* tri2 = (Triangle4*)tempNode.leaf(num);
 
 					b = boundsQueue.front();
 					boundsQueue.pop();
@@ -398,32 +428,28 @@ namespace embree
 						Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
 						Triangle4* tri2 = (Triangle4*)tempNode.leaf(num);
 
-						for (size_t i = 0; i < num; i++) {
-							for (size_t j = 0; j < tri2[i].size(); j++) {
-								std::cout << "\t\t\tGeomID: " << tri2[i].geomID(j) << ", PrimID: " << tri2[i].primID(j) <<
-									", Bounds: [(" << tri2[i].v0.x[j] << ", " << tri2[i].v0.y[j] << ", " << tri2[i].v0.z[j] <<
-									"); (" << tri2[i].v0.x[j] - tri2[i].e1.x[j] << ", " << tri2[i].v0.y[j] - tri2[i].e1.y[j] << ", " << tri2[i].v0.z[j] - tri2[i].e1.z[j] <<
-									"); (" << tri2[i].v0.x[j] + tri2[i].e2.x[j] << ", " << tri2[i].v0.y[j] + tri2[i].e2.y[j] << ", " << tri2[i].v0.z[j] + tri2[i].e2.z[j] << ")]\n";
-							}
-						}
+						//tri[0].primIDs[0] = tempID;
+						//std::cout << tri[0].primIDs[0] << std::endl;
+
+
+						// write leaf node to bvh.txt
+						std::cout << tempID << " 2 " << tri->size() << " " << b.lower.x << " " << b.lower.y << " " << b.lower.z << " "
+							<< b.upper.x << " " << b.upper.y << " " << b.upper.z << "\n";
 					}
 					else if (scene->geometries[0]->gtype == 4) {	// GTY_FLAT_BEZIER_CURVE
-						PrimRef* prim = (PrimRef*)tempNode.leaf(num);
+																	//const PrimRef& prim = (PrimRef)tempNode.leaf(num);
 						Curve4v* curve = (Curve4v*)tempNode.leaf(num);
 						BezierCurve3fa* bezCurve = (BezierCurve3fa*)tempNode.leaf(num);
 						QuadraticBezierCurve3fa* quadBezCurve = (QuadraticBezierCurve3fa*)tempNode.leaf(num);
 
-						//std::cout << "\t\t\tGeomID: " << curve->geomID << ", PrimID: " << curve->primID << ", Bounds: " <<
-						//	prim->bounds() << "\n";
+						//std::cout << "\t\t\tGeomID: " << curve->geomID(0) << ", PrimID: " << curve->primID << ", Bounds: ";
+						//prim->bounds() << "\n";
 					}
 					else {
 						std::cout << "UNKNOWN GEOM TYPE\n";
 					}
-
 				}
-				//aligned node (inner node)
-				else if (tempNode.type() == 0) {
-					std::cout << "\tNodeID: " << tempID << ", Node Type: Aligned Node (" << tempNode.type() << ")\n";
+				else if (tempNode.isAlignedNode()) {	//aligned node (inner node)
 					n8 = tempNode.alignedNode();
 					vector <float> lowerX;
 					vector <float> lowerY;
@@ -441,9 +467,13 @@ namespace embree
 						upperY.push_back(n8->bounds(i).upper.y);
 						upperZ.push_back(n8->bounds(i).upper.z);
 						numChildren++;
-
-						std::cout << "\t\tChild " << i << " bounds: " << n8->bounds(i) << ", NodeID: " << tempID * 8 + (i + 1) << "\n";
 					}
+
+					// write to txt file
+					std::cout << tempID << " 1 " << numChildren << " " << *std::min_element(lowerX.begin(), lowerX.end()) << " "
+						<< *std::min_element(lowerY.begin(), lowerY.end()) << " " << *std::min_element(lowerZ.begin(), lowerZ.end()) << " "
+						<< *std::max_element(upperX.begin(), upperX.end()) << " " << *std::max_element(upperY.begin(), upperY.end()) << " "
+						<< *std::max_element(upperZ.begin(), upperZ.end()) << "\n";
 
 					// push children to queue
 					for (int i = 0; i < 8; i++) {
@@ -451,7 +481,7 @@ namespace embree
 						idQueue.push(tempID * 8 + (i + 1));
 
 						// push leaf node bounds onto queue to access when current node is leaf node
-						if (n8->child(i).type() == 9 || n8->child(i).type() == 10) {	// valid leaf node
+						if (n8->child(i).type() == 9) {	// valid leaf node
 							boundsQueue.push(n8->bounds(i));
 						}
 					}
@@ -479,13 +509,12 @@ namespace embree
 			AccelN* test = ((AccelN*)scene->geometries[1]->scene->intersectors.ptr);
 			*/
 			AccelN* accelN = (AccelN*)(accel);
-			std::cout << "Top level BVH consists of:\n";
+			std::cout << "Top level BVH consists of: \n";
 			for (size_t i = 0; i < accelN->validAccels.size(); i++) {
 				if (accelN->validAccels[i]->intersectors.ptr->type == AccelData::TY_BVH4) {
 					bvh4 = (BVH4*)accelN->validAccels[i]->intersectors.ptr;
 					BVH4::NodeRef node = bvh4->root;
-					std::cout << "BVH type: TY_BVH4, Geometry type: " << scene->geometries[i]->gtype << "\n";
-
+					std::cout << "\tTY_BVH4:\n";
 
 					// access instance associated with current bvh
 					Instance* inst = ((Instance*)bvh4->scene->geometries[i].ptr);
@@ -500,129 +529,34 @@ namespace embree
 					nodeQueue4.push(node);
 					idQueue.push(0);
 					while (!(nodeQueue4.empty())) {
-						while (!(nodeQueue4.empty())) {
-							BVH4::NodeRef tempNode = nodeQueue4.front();
-							nodeQueue4.pop();
-							unsigned long long tempID = idQueue.front();
-							idQueue.pop();
-							//std::cout << "\tNodeID: ";
+						BVH4::NodeRef tempNode = nodeQueue4.front();
+						nodeQueue4.pop();
+						const unsigned long long tempID = idQueue.front();
+						idQueue.pop();
+						std::cout << "\t\tNodeID: ";
+						//leaf node
+						if (tempNode.isLeaf()) {
+							std::cout << tempID << " Leaf Node \n";
 
-							//leaf node
-							if (tempNode.type() == 9 || tempNode.type() == 10) {
-								std::cout << "\tNodeID: " << tempID << ", Node Type: Leaf Node (" << tempNode.type() << ")\n";
+							//BVH4::AlignedNode templeaf = tempNode.leaf.alignedNode();
 
-								size_t num;
-								BBox3fa b;
-
-								b = boundsQueue.front();
-								boundsQueue.pop();
-								
-								// change primID to equal leaf node id
-								if (inst->gtype == 16) {		// GTY_TRIANGLE_MESH
-									Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
-									Triangle4* tri2 = (Triangle4*)tempNode.leaf(num);
-
-									for (size_t i = 0; i < num; i++) {
-										for (size_t j = 0; j < tri2[i].size(); j++) {
-											std::cout << "\t\t\tGeomID: " << tri2[i].geomID(j) << ", PrimID: " << tri2[i].primID(j) <<
-												", Bounds: [(" << tri2[i].v0.x[j] << ", " << tri2[i].v0.y[j] << ", " << tri2[i].v0.z[j] <<
-												"); (" << tri2[i].v0.x[j] - tri2[i].e1.x[j] << ", " << tri2[i].v0.y[j] - tri2[i].e1.y[j] << ", " << tri2[i].v0.z[j] - tri2[i].e1.z[j] <<
-												"); (" << tri2[i].v0.x[j] + tri2[i].e2.x[j] << ", " << tri2[i].v0.y[j] + tri2[i].e2.y[j] << ", " << tri2[i].v0.z[j] + tri2[i].e2.z[j] << ")]\n";
-										}
-									}
-								}
-								else if (inst->gtype == 4) {	// GTY_FLAT_BEZIER_CURVE
-									PrimRef* prim = (PrimRef*)tempNode.leaf(num);
-									Curve4v* curve = (Curve4v*)tempNode.leaf(num);
-									BezierCurve3fa* bezCurve = (BezierCurve3fa*)tempNode.leaf(num);
-									QuadraticBezierCurve3fa* quadBezCurve = (QuadraticBezierCurve3fa*)tempNode.leaf(num);
-									
-									//std::cout << "\t\t\tGeomID: " << curve->geomID << ", PrimID: " << curve->primID << ", Bounds: " <<
-									//	prim->bounds() << "\n";
-								}
+						}
+						//aligned node (inner node)
+						else if (tempNode.isAlignedNode()) {
+							n4 = tempNode.alignedNode();
+							std::cout << tempID << ", Node Type: Aligned Node";
+							for (int i = 0; i < 4; i++) {
+								nodeQueue4.push(n4->child(i));
+								idQueue.push(tempID * 4 + (i + 1));
+								//std::cout << n4->bounds(i).lower.x << " " << n4->bounds(i).lower.y << " " << n4->bounds(i).lower.z << " " << n4->bounds(i).upper.x << " " << n4->bounds(i).upper.y << " " << n4->bounds(i).upper.z << " ";
+								std::cout << "\n\t\t\tChild " << i << " bounds: " << n4->bounds(i) << ", NodeID: " << tempID * 4 + (i + 1);
 							}
-							//aligned node (inner node)
-							else if (tempNode.type() == 0) {
-								std::cout << "\tNodeID: " << tempID << ", Node Type: Aligned Node (" << tempNode.type() << ")\n";
-								n4 = tempNode.alignedNode();
-								vector <float> lowerX;
-								vector <float> lowerY;
-								vector <float> lowerZ;
-								vector <float> upperX;
-								vector <float> upperY;
-								vector <float> upperZ;
-								unsigned int numChildren = 0;
-								for (int i = 0; i < 4; i++) {
-									if (n4->bounds(i).lower.x == (float)pos_inf || n4->bounds(i).lower.x == (float)neg_inf) break;
-									lowerX.push_back(n4->bounds(i).lower.x);
-									lowerY.push_back(n4->bounds(i).lower.y);
-									lowerZ.push_back(n4->bounds(i).lower.z);
-									upperX.push_back(n4->bounds(i).upper.x);
-									upperY.push_back(n4->bounds(i).upper.y);
-									upperZ.push_back(n4->bounds(i).upper.z);
-									numChildren++;
-
-									std::cout << "\t\tChild " << i << " bounds: " << n4->bounds(i) << ", NodeID: " << tempID * 4 + (i + 1) << "\n";
-								}
-
-								// push children to queue
-								for (int i = 0; i < 4; i++) {
-									nodeQueue4.push(n4->child(i));
-									idQueue.push(tempID * 4 + (i + 1));
-
-									// push leaf node bounds onto queue to access when current node is leaf node
-									if (n4->child(i).type() == 9 || n4->child(i).type() == 10) {	// valid leaf node
-										boundsQueue.push(n4->bounds(i));
-									}
-								}
-							}
-							// unaligned node
-							else if (tempNode.isUnalignedNode()) {
-								std::cout << "\tNodeID: " << tempID << ", Node Type: Unaligned Node (" << tempNode.type() << ")\n";
-								un4 = tempNode.unalignedNode();
-								vector <float> lowerX;
-								vector <float> lowerY;
-								vector <float> lowerZ;
-								vector <float> upperX;
-								vector <float> upperY;
-								vector <float> upperZ;
-								/*
-								int numChildren = 0;
-								for (int i = 0; i < 8; i++) {
-
-									if (un4->bounds(i).lower.x == (float)pos_inf || un4->bounds(i).lower.x == (float)neg_inf) break;
-									lowerX.push_back(n4->bounds(i).lower.x);
-									lowerY.push_back(n4->bounds(i).lower.y);
-									lowerZ.push_back(n4->bounds(i).lower.z);
-									upperX.push_back(n4->bounds(i).upper.x);
-									upperY.push_back(n4->bounds(i).upper.y);
-									upperZ.push_back(n4->bounds(i).upper.z);
-									numChildren++;
-
-									std::cout << "\t\tChild " << i << " bounds: " << n4->bounds(i) << ", NodeID: " << tempID * 4 + (i + 1) << "\n";
-								}
-								*/
-
-								//std::cout << "Bounding Box: " << un8->naabb << "\n";
-
-								// push children to queue
-								for (int i = 0; i < 4; i++) {
-									nodeQueue4.push(un4->child(i));
-									idQueue.push(tempID * 4 + (i + 1));
-
-									// push leaf node bounds onto queue to access when current node is leaf node
-									if (un4->child(i).type() == 9 || un4->child(i).type() == 10) {	// valid leaf node
-										//boundsQueue.push(un4->bounds(i));
-									}
-								}
-
-							}
-							else if (tempNode.type() == 8) {
-								std::cout << "\tEMPTY NODE" << "\n";
-							}
-							else {
-								std::cout << "ERROR: UNKNOWN NODE TYPE " << tempNode.type() << "\n";
-							}
+							std::cout << "\n";
+						}
+						//leaf node
+						//something else
+						else {
+							std::cout << tempID << "ERROR: UNKNOWN NODE TYPE " << tempNode.type() << "\n";
 						}
 					}
 				}
@@ -630,7 +564,7 @@ namespace embree
 					bvh8 = (BVH8*)accelN->validAccels[i]->intersectors.ptr;
 					BVH8::NodeRef node = bvh8->root;
 
-					std::cout << "BVH type: TY_BVH8, Geometry type: " << scene->geometries[i]->gtype << "\n";
+					std::cout << "\tTY_BVH8:\n";
 
 					// access instance associated with current bvh
 					Instance* inst = ((Instance*)bvh8->scene->geometries[0].ptr);
@@ -646,130 +580,37 @@ namespace embree
 					while (!(nodeQueue8.empty())) {
 						BVH8::NodeRef tempNode = nodeQueue8.front();
 						nodeQueue8.pop();
-						unsigned long long tempID = idQueue.front();
+						const unsigned long long tempID = idQueue.front();
 						idQueue.pop();
-						//std::cout << "\tNodeID: ";
-
+						int nodeType = tempNode.type();
+						std::cout << "\t\tNodeID: ";
 						//leaf node
-						if (tempNode.type() == 9 || tempNode.type() == 10) {
-							std::cout << "\tNodeID: " << tempID << ", Node Type: Leaf Node (" << tempNode.type() << ")\n";
-
-							size_t num;
-							BBox3fa b;
-
-							b = boundsQueue.front();
-							boundsQueue.pop();
-
-							// change primID to equal leaf node id
-							if (scene->geometries[i]->gtype == 16) {		// GTY_TRIANGLE_MESH
-								Triangle4v* tri = (Triangle4v*)tempNode.leaf(num);
-								Triangle4* tri2 = (Triangle4*)tempNode.leaf(num);
-
-								for (size_t i = 0; i < num; i++) {
-									for (size_t j = 0; j < tri2[i].size(); j++) {
-										std::cout << "\t\t\tGeomID: " << tri2[i].geomID(j) << ", PrimID: " << tri2[i].primID(j) <<
-											", Bounds: [(" << tri2[i].v0.x[j] << ", " << tri2[i].v0.y[j] << ", " << tri2[i].v0.z[j] <<
-											"); (" << tri2[i].v0.x[j] - tri2[i].e1.x[j] << ", " << tri2[i].v0.y[j] - tri2[i].e1.y[j] << ", " << tri2[i].v0.z[j] - tri2[i].e1.z[j] <<
-											"); (" << tri2[i].v0.x[j] + tri2[i].e2.x[j] << ", " << tri2[i].v0.y[j] + tri2[i].e2.y[j] << ", " << tri2[i].v0.z[j] + tri2[i].e2.z[j] << ")]\n";
-									}
-								}
-							}
-							else if (scene->geometries[i]->gtype == 4) {	// GTY_FLAT_BEZIER_CURVE
-								PrimRef* prim = (PrimRef*)tempNode.leaf(num);
-								Curve4v* curve = (Curve4v*)tempNode.leaf(num);
-								BezierCurve3fa* bezCurve = (BezierCurve3fa*)tempNode.leaf(num);
-								QuadraticBezierCurve3fa* quadBezCurve = (QuadraticBezierCurve3fa*)tempNode.leaf(num);
-
-								//std::cout << "\t\t\tGeomID: " << curve->geomID << ", PrimID: " << curve->primID << ", Bounds: " <<
-								//	prim->bounds() << "\n";
-							}
+						if (tempNode.isLeaf()) {
+							std::cout << tempID << " Leaf Node \n";
 						}
 						//aligned node (inner node)
-						else if (tempNode.type() == 0) {
-							std::cout << "\tNodeID: " << tempID << ", Node Type: Aligned Node (" << tempNode.type() << ")\n";
+						else if (tempNode.isAlignedNode()) {
 							n8 = tempNode.alignedNode();
-							vector <float> lowerX;
-							vector <float> lowerY;
-							vector <float> lowerZ;
-							vector <float> upperX;
-							vector <float> upperY;
-							vector <float> upperZ;
-							unsigned int numChildren = 0;
-							for (int i = 0; i < 8; i++) {
-								if (n8->bounds(i).lower.x == (float)pos_inf || n8->bounds(i).lower.x == (float)neg_inf) break;
-								lowerX.push_back(n8->bounds(i).lower.x);
-								lowerY.push_back(n8->bounds(i).lower.y);
-								lowerZ.push_back(n8->bounds(i).lower.z);
-								upperX.push_back(n8->bounds(i).upper.x);
-								upperY.push_back(n8->bounds(i).upper.y);
-								upperZ.push_back(n8->bounds(i).upper.z);
-								numChildren++;
-
-								std::cout << "\t\tChild " << i << " bounds: " << n8->bounds(i) << ", NodeID: " << tempID * 8 + (i + 1) << "\n";
-							}
-
-							// push children to queue
+							std::cout << tempID << ", Node Type: Aligned Node";
 							for (int i = 0; i < 8; i++) {
 								nodeQueue8.push(n8->child(i));
 								idQueue.push(tempID * 8 + (i + 1));
-
-								// push leaf node bounds onto queue to access when current node is leaf node
-								if (n8->child(i).type() == 9 || n8->child(i).type() == 10) {	// valid leaf node
-									boundsQueue.push(n8->bounds(i));
-								}
+								//std::cout << n8->bounds(i).lower.x << " " << n8->bounds(i).lower.y << " " << n8->bounds(i).lower.z << " " << n8->bounds(i).upper.x << " " << n8->bounds(i).upper.y << " " << n8->bounds(i).upper.z << " ";
+								std::cout << "\n\t\t\tChild " << i << " bounds: " << n8->bounds(i) << ", NodeID: " << tempID * 8 + (i + 1);
 							}
+							std::cout << "\n";
 						}
-						// unaligned node
-						else if (tempNode.isUnalignedNode()) {
-							std::cout << "\tNodeID: " << tempID << ", Node Type: Unaligned Node (" << tempNode.type() << ")\n";
-							un8 = tempNode.unalignedNode();
-							vector <float> lowerX;
-							vector <float> lowerY;
-							vector <float> lowerZ;
-							vector <float> upperX;
-							vector <float> upperY;
-							vector <float> upperZ;
-
-							/*
-							int numChildren = 0;
-							for (int i = 0; i < 8; i++) {
-								
-								if (un4->bounds(i).lower.x == (float)pos_inf || un4->bounds(i).lower.x == (float)neg_inf) break;
-								lowerX.push_back(n4->bounds(i).lower.x);
-								lowerY.push_back(n4->bounds(i).lower.y);
-								lowerZ.push_back(n4->bounds(i).lower.z);
-								upperX.push_back(n4->bounds(i).upper.x);
-								upperY.push_back(n4->bounds(i).upper.y);
-								upperZ.push_back(n4->bounds(i).upper.z);
-								numChildren++;
-
-								std::cout << "\t\tChild " << i << " bounds: " << n4->bounds(i) << ", NodeID: " << tempID * 4 + (i + 1) << "\n";
-							}
-							*/
-
-							//std::cout << "Bounding Box: " << un8->naabb << "\n";
-
-							// push children to queue
-							for (int i = 0; i < 4; i++) {
-								nodeQueue4.push(un4->child(i));
-								idQueue.push(tempID * 4 + (i + 1));
-
-								// push leaf node bounds onto queue to access when current node is leaf node
-								if (un4->child(i).type() == 9 || un4->child(i).type() == 10) {	// valid leaf node
-																								//boundsQueue.push(un4->bounds(i));
-								}
-							}
-						}
-						else if (tempNode.type() == 8) {
-							std::cout << "\tEMPTY NODE" << "\n";
-						}
-						else {
-							std::cout << "ERROR: UNKNOWN NODE TYPE " << tempNode.type() << "\n";
-						}
+						//something else
+						else
+							std::cout << tempID << "ERROR: UNKNOWN NODE TYPE " << tempNode.type() << "\n";
 					}
 				}
 			}
 		}
+	}
+	else {
+		std::cout << "ERROR: UNABLE TO OPEN TEXT FILE";
+	}
 #else
 //=================================================================================================================
 	BVH4* bvh4 = nullptr;
@@ -871,6 +712,8 @@ namespace embree
 						upperZ.push_back(n4->bounds(i).upper.z);
 						numChildren++;
 					}
+
+					
 
 					// write to txt file
 					f << tempID << " 1 " << numChildren << " " << *std::min_element(lowerX.begin(), lowerX.end()) << " "
@@ -1026,7 +869,7 @@ namespace embree
 					std::cout << "\tTY_BVH4:\n";
 
 					// access instance associated with current bvh
-					Instance* inst = ((Instance*)bvh4->scene->geometries[0].ptr);
+					Instance* inst = ((Instance*)bvh4->scene->geometries[i].ptr);
 
 					//std::cout << "\tLocal to World Transformation Matrix: \n";
 					//std::cout << "\t\tvx = " << inst->local2world->l.vx << "\n";

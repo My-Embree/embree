@@ -36,6 +36,7 @@
 #include "../geometry/subgrid_mb_intersector.h"
 #include "../geometry/curve_intersector_virtual.h"
 
+
 namespace embree
 {
   namespace isa
@@ -95,6 +96,7 @@ namespace embree
           /* intersect node */
           size_t mask; vfloat<Nx> tNear;
           STAT3(normal.trav_nodes,1,1,1);
+
           bool nodeIntersected = BVHNNodeIntersector1<N, Nx, types, robust>::intersect(cur, tray, ray.time(), tNear, mask);
           if (unlikely(!nodeIntersected)) { STAT3(normal.trav_nodes,-1,-1,-1); break; }
 
@@ -109,7 +111,12 @@ namespace embree
         /* this is a leaf node */
         assert(cur != BVH::emptyNode);
         STAT3(normal.trav_leaves,1,1,1);
-        size_t num; Primitive* prim = (Primitive*)cur.leaf(num);
+        size_t num; 
+		Primitive* prim = (Primitive*)cur.leaf(num);
+
+		//std::cout << cur.primTy;
+		//std::cout << This->ptr-> << std::endl;
+
         size_t lazy_node = 0;
         PrimitiveIntersector1::intersect(This, pre, ray, context, prim, num, tray, lazy_node);
         tray.tfar = ray.tfar;

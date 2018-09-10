@@ -146,11 +146,15 @@ namespace embree {
 		Ray ray(Vec3fa(camera.xfm.p), Vec3fa(normalize(x*camera.xfm.l.vx + y * camera.xfm.l.vy + camera.xfm.l.vz)), 0.0f, inf);
 
 		/* intersect ray with scene */
+		rayID++;
+		if (rayID == 262126) {
+			std::cout << "test\n";
+		}
 		rtcIntersect1(g_scene, &context, RTCRayHit_(ray));
 		//RayStats_addRay(stats);
 
 
-		ray.id = rayID++;
+		ray.id = rayID;
 		rayInfo << rayID << " " << ray.tfar << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
 			" " << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << "\n";
 		rayIntersect << rayID << " " << ray.geomID << " " << ray.primID << "\n";

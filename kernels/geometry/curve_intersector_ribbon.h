@@ -84,19 +84,33 @@ namespace embree
                                         const Vec3fa& v0, const Vec3fa& v1, const Vec3fa& v2, const Vec3fa& v3, const int N,
                                         const Epilog& epilog)
     {
+		
+		std::cout << "ray_org.{x,y,z} = " << ray_org << std::endl;
+		std::cout << "ray_space.{vx,vy,vz} = " << ray_space << std::endl;
+		std::cout << "v0.{x,y,z} = " << v0 << ", v0.w = " << v0.w << std::endl;
+		std::cout << "v1.{x,y,z} = " << v1 << ", v1.w = " << v1.w << std::endl;
+		std::cout << "v2.{x,y,z} = " << v2 << ", v2.w = " << v2.w << std::endl;
+		std::cout << "v3.{x,y,z} = " << v3 << ", v3.w = " << v3.w << std::endl << std::endl;
+
       /* transform control points into ray space */
       Vec3fa w0 = xfmVector(ray_space,v0-ray_org); w0.w = v0.w;
       Vec3fa w1 = xfmVector(ray_space,v1-ray_org); w1.w = v1.w;
       Vec3fa w2 = xfmVector(ray_space,v2-ray_org); w2.w = v2.w;
       Vec3fa w3 = xfmVector(ray_space,v3-ray_org); w3.w = v3.w;
+
+	  std::cout << "w0.{x,y,z} = " << w0 << ", w0.w = " << w0.w << std::endl;
+	  std::cout << "w1.{x,y,z} = " << w1 << ", w1.w = " << w1.w << std::endl;
+	  std::cout << "w2.{x,y,z} = " << w2 << ", w2.w = " << w2.w << std::endl;
+	  std::cout << "w3.{x,y,z} = " << w3 << ", w3.w = " << w3.w << std::endl << std::endl;
+
       NativeCurve3fa curve2D(w0,w1,w2,w3);
       float eps = 4.0f*float(ulp)*reduce_max(max(abs(w0),abs(w1),abs(w2),abs(w3)));
       
       /* evaluate the bezier curve */
       bool ishit = false;
       vboolx valid = vfloatx(step) < vfloatx(float(N));
-      const Vec4vfx p0 = curve2D.template eval0<VSIZEX>(0,N);
-      const Vec4vfx p1 = curve2D.template eval1<VSIZEX>(0,N);
+      const Vec4vfx p0 = curve2D.template eval0<VSIZEX>(0,16);
+      const Vec4vfx p1 = curve2D.template eval1<VSIZEX>(0,16);
       valid &= cylinder_culling_test(zero,Vec2vfx(p0.x,p0.y),Vec2vfx(p1.x,p1.y),max(p0.w,p1.w));
       
       if (any(valid)) 

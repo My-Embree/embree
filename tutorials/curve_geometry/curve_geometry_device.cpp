@@ -106,7 +106,7 @@ extern "C" void device_init (char* cfg)
   g_scene = rtcNewScene(g_device);
 
   /* add ground plane */
-  addGroundPlane(g_scene);
+  //addGroundPlane(g_scene);
 
   /* add curve */
   addCurve(g_scene,Vec3fa(0.0f,0.0f,0.0f));
@@ -117,6 +117,7 @@ extern "C" void device_init (char* cfg)
   /* set start render mode */
   renderTile = renderTileStandard;
   key_pressed_handler = device_key_pressed_default;
+
 }
 
 /* task that renders a single screen tile */
@@ -130,7 +131,7 @@ Vec3fa renderPixelStandard(float x, float y, const ISPCCamera& camera, RayStats&
 
   /* intersect ray with scene */
   rtcIntersect1(g_scene,&context,RTCRayHit_(ray));
-  RayStats_addRay(stats);
+  //RayStats_addRay(stats);
 
   /* shade pixels */
   Vec3fa color = Vec3fa(0.0f);
@@ -219,6 +220,7 @@ extern "C" void device_render (int* pixels,
                     const float time,
                     const ISPCCamera& camera)
 {
+/*
   const int numTilesX = (width +TILE_SIZE_X-1)/TILE_SIZE_X;
   const int numTilesY = (height+TILE_SIZE_Y-1)/TILE_SIZE_Y;
   parallel_for(size_t(0),size_t(numTilesX*numTilesY),[&](const range<size_t>& range) {
@@ -226,6 +228,14 @@ extern "C" void device_render (int* pixels,
     for (size_t i=range.begin(); i<range.end(); i++)
       renderTileTask((int)i,threadIndex,pixels,width,height,time,camera,numTilesX,numTilesY);
   }); 
+*/
+
+	const int numTilesX = (width + TILE_SIZE_X - 1) / TILE_SIZE_X;
+	const int numTilesY = (height + TILE_SIZE_Y - 1) / TILE_SIZE_Y;
+
+	for (size_t i = 0; i < (numTilesX*numTilesY); ++i) {
+		renderTileTask((int)i, 0, pixels, width, height, time, camera, numTilesX, numTilesY);
+	}
 }
 
 /* called by the C++ code for cleanup */

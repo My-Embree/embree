@@ -260,12 +260,15 @@ Vec3fa renderPixelStandard(float x, float y, const ISPCCamera& camera, RayStats&
   RTCIntersectContext context;
   rtcInitIntersectContext(&context);
   context.flags = g_iflags_coherent;
+
+  rayID++;
+
   rtcIntersect1(g_scene,&context,RTCRayHit_(ray));
   //RayStats_addRay(stats);
 
 
   // write ray info to ray txt files
-  ray.id = rayID++;
+  ray.id = rayID;
   rayInfo << ray.id << " " << ray.tfar << " " << ray.org.x << " " << ray.org.y << " " << ray.org.z <<
 	  " " << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << "\n";
   rayIntersect << ray.id << " " << ray.geomID << " " << ray.primID << "\n";

@@ -93,8 +93,9 @@ RTCScene convertScene(ISPCScene* scene_in)
   for (unsigned int i=0; i<scene_in->numGeometries; i++)
   {
     ISPCGeometry* geometry = scene_in->geometries[i];
-    if (geometry->type == TRIANGLE_MESH)
-      convertTriangleMesh((ISPCTriangleMesh*) geometry, scene_out);
+	if (geometry->type == TRIANGLE_MESH)
+		//convertTriangleMesh((ISPCTriangleMesh*) geometry, scene_out);
+		std::cout << "triangle geometry skipped" << std::endl;
     else if (geometry->type == CURVES)
       convertHairSet((ISPCHairSet*) geometry, scene_out);
   }
@@ -488,6 +489,7 @@ extern "C" void device_render (int* pixels,
   }
 
   /* render frame */
+/*
   const int numTilesX = (width +TILE_SIZE_X-1)/TILE_SIZE_X;
   const int numTilesY = (height+TILE_SIZE_Y-1)/TILE_SIZE_Y;
   parallel_for(size_t(0),size_t(numTilesX*numTilesY),[&](const range<size_t>& range) {
@@ -495,6 +497,12 @@ extern "C" void device_render (int* pixels,
     for (size_t i=range.begin(); i<range.end(); i++)
       renderTileTask((int)i,threadIndex,pixels,width,height,time,camera,numTilesX,numTilesY);
   }); 
+*/
+  const int numTilesX = (width + TILE_SIZE_X - 1) / TILE_SIZE_X;
+  const int numTilesY = (height + TILE_SIZE_Y - 1) / TILE_SIZE_Y;
+  for (size_t i = 0; i < (numTilesX*numTilesY); ++i) {
+	renderTileTask((int)i, 0, pixels, width, height, time, camera, numTilesX, numTilesY);
+  }
 }
 
 /* called by the C++ code for cleanup */
