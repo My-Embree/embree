@@ -20,7 +20,6 @@
 #include "../common/geometry.h"
 
 #include <fstream>
-#include <iostream>
 #include <bitset>
 
 namespace embree
@@ -35,42 +34,18 @@ namespace embree
       __forceinline CurvePrecalculations1() {}
 
       __forceinline CurvePrecalculations1(const Ray& ray, const void* ptr)
-      {
-		// open file
-		std::ofstream f("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/UUT_testdata.txt");
+	  {
+		/*static int sampleCount = 0;
+		if (sampleCount < 100) {
+			std::ofstream svInputFile;
+			svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/CurvePrecalculationsInputFile.txt", std::ios::app);
 
-		if (f.is_open()) {
+			if (svInputFile.is_open()) {
+				svInputFile << std::setprecision(16) << ray.dir.x << " " << ray.dir.y << " " << ray.dir.z << std::endl;
+			}
 
-			f << std::bitset<sizeof f * 8>(*(long unsigned int*)(&ray.dir.x));
-
-			// create unions to convert data from float to binary
-			///////////////////////ray unions
-			/*union {
-				float din;
-				int dout;
-			} dir_x;
-			dir_x.din = ray.dir.x;
-
-			union {
-				float din;
-				int dout;
-			} dir_y;
-			dir_y.din = ray.dir.y;
-
-			union {
-				float din;
-				int dout;
-			} dir_z;
-			dir_z.din = ray.dir.z;
-
-			// create bitset conversion
-			std::bitset<sizeof(float) * CHAR_BIT> dirXbits(dir_x.dout);
-			//std::bitset<sizeof(float) * CHAR_BIT> dirYbits(dir_y.dout);
-			//std::bitset<sizeof(float) * CHAR_BIT> dirZbits(dir_z.dout);
-
-			// output ray.dir to UUT_testdata.txt
-			f << dirXbits << "_" << dirYbits << "_" << dirZbits << "_";*/
-		}
+			svInputFile.close();
+		}*/
 
 
         depth_scale = rsqrt(dot(ray.dir,ray.dir));
@@ -79,88 +54,25 @@ namespace embree
         ray_space = space.transposed();
 		
 
-		/*if (f.is_open()) {
-			// create unions to convert data from float to binary
-			///////////////////////depth_scale union
-			union {
-				float din;
-				int dout;
-			} depth;
-			depth.din = depth_scale;
+		/*if (sampleCount < 100) {
+			std::ofstream svOutputFile;
+			svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/CurvePrecalculationsOutputFile.txt", std::ios::app);
 
-			///////////////////////ray_space unions
-			union {
-				float din;
-				int dout;
-			} ray_space_vx_x;
-			ray_space_vx_x.din = ray_space.vx.x;
+			if (svOutputFile.is_open()) {
+				svOutputFile << std::setprecision(16) << depth_scale << " ";
+				svOutputFile << std::setprecision(16) << ray_space.vx.x << " " << ray_space.vx.y << " " << ray_space.vx.z << " "
+					<< ray_space.vy.x << " " << ray_space.vy.y << " " << ray_space.vy.z << " "
+					<< ray_space.vz.x << " " << ray_space.vz.y << " " << ray_space.vz.z << std::endl;
+			}
 
-			union {
-				float din;
-				int dout;
-			} ray_space_vx_y;
-			ray_space_vx_y.din = ray_space.vx.y;
+			svOutputFile.close();
 
-			union {
-				float din;
-				int dout;
-			} ray_space_vx_z;
-			ray_space_vx_z.din = ray_space.vx.z;
-
-			union {
-				float din;
-				int dout;
-			} ray_space_vy_x;
-			ray_space_vy_x.din = ray_space.vy.x;
-
-			union {
-				float din;
-				int dout;
-			} ray_space_vy_y;
-			ray_space_vy_y.din = ray_space.vy.y;
-
-			union {
-				float din;
-				int dout;
-			} ray_space_vy_z;
-			ray_space_vy_z.din = ray_space.vy.z;
-
-			union {
-				float din;
-				int dout;
-			} ray_space_vz_x;
-			ray_space_vz_x.din = ray_space.vz.x;
-
-			union {
-				float din;
-				int dout;
-			} ray_space_vz_y;
-			ray_space_vz_y.din = ray_space.vz.y;
-
-			union {
-				float din;
-				int dout;
-			} ray_space_vz_z;
-			ray_space_vz_z.din = ray_space.vz.z;
-
-			// create bitset conversion
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vx_x_bits(ray_space_vx_x.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vx_y_bits(ray_space_vx_y.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vx_z_bits(ray_space_vx_z.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vy_x_bits(ray_space_vy_x.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vy_y_bits(ray_space_vy_y.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vy_z_bits(ray_space_vy_z.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vz_x_bits(ray_space_vx_x.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vz_y_bits(ray_space_vy_y.dout);
-			std::bitset<sizeof(float) * CHAR_BIT> ray_space_vz_z_bits(ray_space_vz_z.dout);
-
-
-			f << depth_scale << "_" << ray_space_vx_x_bits << "_" << ray_space_vx_y_bits << "_" << ray_space_vx_z_bits << "_"
-				<< ray_space_vy_x_bits << "_" << ray_space_vy_y_bits << "_" << ray_space_vy_z_bits << "_"
-				<< ray_space_vz_x_bits << "_" << ray_space_vz_y_bits << "_" << ray_space_vz_z_bits << "_" << std::endl;
+			++sampleCount;
+		}
+		else {
+			std::cout << "DONE SAMPLING" << std::endl;
 		}*/
-
-		f.close();
+		
       }
     };
     

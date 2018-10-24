@@ -25,19 +25,79 @@ namespace embree
      *  v0,v1,v3 and v2,v3,v1. The edge v1,v2 decides which of the two
      *  triangles gets intersected. */
     template<int N>
-    __forceinline vbool<N> intersect_quad_backface_culling(const vbool<N>& valid0,
-                                                           const Vec3fa& ray_org,
-                                                           const Vec3fa& ray_dir,
-                                                           const float ray_tnear,
-                                                           const float ray_tfar,
-                                                           const Vec3vf<N>& quad_v0,
-                                                           const Vec3vf<N>& quad_v1,
-                                                           const Vec3vf<N>& quad_v2,
-                                                           const Vec3vf<N>& quad_v3,
-                                                           vfloat<N>& u_o,
-                                                           vfloat<N>& v_o,
-                                                           vfloat<N>& t_o)
-    {
+	__forceinline vbool<N> intersect_quad_backface_culling(const vbool<N>& valid0,
+		const Vec3fa& ray_org,
+		const Vec3fa& ray_dir,
+		const float ray_tnear,
+		const float ray_tfar,
+		const Vec3vf<N>& quad_v0,
+		const Vec3vf<N>& quad_v1,
+		const Vec3vf<N>& quad_v2,
+		const Vec3vf<N>& quad_v3,
+		vfloat<N>& u_o,
+		vfloat<N>& v_o,
+		vfloat<N>& t_o)
+	{
+		static int inputSampleCount = 0;
+		static int outputSampleCount = 0;
+
+
+		// FOR IQBC TEST
+		/*static int numInCount = 0;
+		static int infInCount = 0;
+		static int numOutCount = 0;
+		static int infOutCount = 0;
+
+		if (inputSampleCount < 100) {
+			if (ray_tfar != std::numeric_limits<float>::infinity()) {
+				if (numInCount < 50) {
+					std::ofstream svInputFile;
+					svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/iqbc_input_file.txt", std::ios::app);
+
+					if (svInputFile.is_open()) {
+						svInputFile << std::setprecision(16) << valid0.i[0] << " ";
+						svInputFile << std::setprecision(16) << ray_tnear << " ";
+						svInputFile << std::setprecision(16) << ray_tfar << " ";
+						svInputFile << std::setprecision(16) << quad_v0.x[0] << " " << quad_v0.y[0] << " " << quad_v0.z[0] << " "
+							<< quad_v1.x[0] << " " << quad_v1.y[0] << " " << quad_v1.z[0] << " "
+							<< quad_v2.x[0] << " " << quad_v2.y[0] << " " << quad_v2.z[0] << " "
+							<< quad_v3.x[0] << " " << quad_v3.y[0] << " " << quad_v3.z[0] << std::endl;
+					}
+
+					svInputFile.close();
+
+					++inputSampleCount;
+					++numInCount;
+				}
+				else {
+					std::cout << "DONE SAMPLING" << std::endl;
+				}
+			} else {
+				if (infInCount < 50) {
+					std::ofstream svInputFile;
+					svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/iqbc_input_file.txt", std::ios::app);
+
+					if (svInputFile.is_open()) {
+						svInputFile << std::setprecision(16) << valid0.i[0] << " ";
+						svInputFile << std::setprecision(16) << ray_tnear << " ";
+						svInputFile << std::setprecision(16) << ray_tfar << " ";
+						svInputFile << std::setprecision(16) << quad_v0.x[0] << " " << quad_v0.y[0] << " " << quad_v0.z[0] << " "
+							<< quad_v1.x[0] << " " << quad_v1.y[0] << " " << quad_v1.z[0] << " "
+							<< quad_v2.x[0] << " " << quad_v2.y[0] << " " << quad_v2.z[0] << " "
+							<< quad_v3.x[0] << " " << quad_v3.y[0] << " " << quad_v3.z[0] << std::endl;
+					}
+
+					svInputFile.close();
+
+					++inputSampleCount;
+					++infInCount;
+				}
+				else {
+					std::cout << "DONE SAMPLING" << std::endl;
+				}
+			}
+		}*/
+
       /* calculate vertices relative to ray origin */
       vbool<N> valid = valid0;
       const Vec3vf<N> O = Vec3vf<N>(ray_org);
@@ -86,6 +146,56 @@ namespace embree
       v_o = V * rcpDen;
       u_o = select(WW <= 0.0f,u_o,1.0f-u_o);
       v_o = select(WW <= 0.0f,v_o,1.0f-v_o);
+
+
+
+	  // FOR IQBC TEST
+	  /*if (outputSampleCount < 100) {
+		  if (ray_tfar != std::numeric_limits<float>::infinity()) {
+			  if (numOutCount < 50) {
+				  std::ofstream svOutputFile;
+				  svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/iqbc_output_file.txt", std::ios::app);
+
+				  if (svOutputFile.is_open()) {
+					  svOutputFile << std::setprecision(16) << valid.i[0] << " ";
+					  svOutputFile << std::setprecision(16) << u_o.f[0] << " ";
+					  svOutputFile << std::setprecision(16) << v_o.f[0] << " ";
+					  svOutputFile << std::setprecision(16) << t_o.f[0] << std::endl;
+				  }
+
+				  svOutputFile.close();
+
+				  ++outputSampleCount;
+				  ++numOutCount;
+			  }
+			  else {
+				  std::cout << "DONE SAMPLING" << std::endl;
+			  }
+		  }
+		  else {
+			  if (infOutCount < 50) {
+				  std::ofstream svOutputFile;
+				  svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/iqbc_output_file.txt", std::ios::app);
+
+				  if (svOutputFile.is_open()) {
+					  svOutputFile << std::setprecision(16) << valid.i[0] << " ";
+					  svOutputFile << std::setprecision(16) << u_o.f[0] << " ";
+					  svOutputFile << std::setprecision(16) << v_o.f[0] << " ";
+					  svOutputFile << std::setprecision(16) << t_o.f[0] << std::endl;
+				  }
+
+				  svOutputFile.close();
+
+				  ++outputSampleCount;
+				  ++infOutCount;
+			  }
+			  else {
+				  std::cout << "DONE SAMPLING" << std::endl;
+			  }
+		  }
+	  }*/
+
+
       return valid;
     }
   }

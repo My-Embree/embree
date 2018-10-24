@@ -78,19 +78,35 @@ namespace embree
       return d.first <= r*r*d.second;
     }
 
+
     template<typename NativeCurve3fa, typename Epilog>
     __forceinline bool intersect_ribbon(const Vec3fa& ray_org, const Vec3fa& ray_dir, const float ray_tnear, const float& ray_tfar,
                                         const LinearSpace3fa& ray_space, const float& depth_scale,
                                         const Vec3fa& v0, const Vec3fa& v1, const Vec3fa& v2, const Vec3fa& v3, const int N,
                                         const Epilog& epilog)
     {
-		
-		std::cout << "ray_org.{x,y,z} = " << ray_org << std::endl;
-		std::cout << "ray_space.{vx,vy,vz} = " << ray_space << std::endl;
-		std::cout << "v0.{x,y,z} = " << v0 << ", v0.w = " << v0.w << std::endl;
-		std::cout << "v1.{x,y,z} = " << v1 << ", v1.w = " << v1.w << std::endl;
-		std::cout << "v2.{x,y,z} = " << v2 << ", v2.w = " << v2.w << std::endl;
-		std::cout << "v3.{x,y,z} = " << v3 << ", v3.w = " << v3.w << std::endl << std::endl;
+		static int sampleCount = 0;
+
+
+		//	FOR CCPT TEST
+		/*if (sampleCount < 100) {
+			std::ofstream svInputFile;
+			svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/CCPTInputFile.txt", std::ios::app);
+
+			if (svInputFile.is_open()) {
+				svInputFile << std::setprecision(16) << ray_org.x << " " << ray_org.y << " " << ray_org.z << " ";
+				svInputFile << std::setprecision(16) << ray_space.vx.x << " " << ray_space.vx.y << " " << ray_space.vx.z << " "
+					<< ray_space.vy.x << " " << ray_space.vy.y << " " << ray_space.vy.z << " "
+					<< ray_space.vz.x << " " << ray_space.vz.y << " " << ray_space.vz.z << " ";
+				svInputFile << std::setprecision(16) << v0.x << " " << v0.y << " " << v0.z << " " << v0.w << " "
+					<< v1.x << " " << v1.y << " " << v1.z << " " << v1.w << " "
+					<< v2.x << " " << v2.y << " " << v2.z << " " << v2.w << " "
+					<< v3.x << " " << v3.y << " " << v3.z << " " << v3.w << std::endl;
+			}
+
+			svInputFile.close();
+		}*/
+
 
       /* transform control points into ray space */
       Vec3fa w0 = xfmVector(ray_space,v0-ray_org); w0.w = v0.w;
@@ -98,10 +114,25 @@ namespace embree
       Vec3fa w2 = xfmVector(ray_space,v2-ray_org); w2.w = v2.w;
       Vec3fa w3 = xfmVector(ray_space,v3-ray_org); w3.w = v3.w;
 
-	  std::cout << "w0.{x,y,z} = " << w0 << ", w0.w = " << w0.w << std::endl;
-	  std::cout << "w1.{x,y,z} = " << w1 << ", w1.w = " << w1.w << std::endl;
-	  std::cout << "w2.{x,y,z} = " << w2 << ", w2.w = " << w2.w << std::endl;
-	  std::cout << "w3.{x,y,z} = " << w3 << ", w3.w = " << w3.w << std::endl << std::endl;
+	  //	FOR CCPT TEST
+	  /*if (sampleCount < 100) {
+		  std::ofstream svOutputFile;
+		  svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/CCPTOutputFile.txt", std::ios::app);
+
+		  if (svOutputFile.is_open()) {
+			  svOutputFile << std::setprecision(16) << w0.x << " " << w0.y << " " << w0.z << " " << w0.w << " ";
+			  svOutputFile << std::setprecision(16) << w1.x << " " << w1.y << " " << w1.z << " " << w1.w << " ";
+			  svOutputFile << std::setprecision(16) << w2.x << " " << w2.y << " " << w2.z << " " << w2.w << " ";
+			  svOutputFile << std::setprecision(16) << w3.x << " " << w3.y << " " << w3.z << " " << w3.w << std::endl;
+		  }
+
+		  svOutputFile.close();
+
+		  ++sampleCount;
+	  } else {
+		  std::cout << "DONE SAMPLING" << std::endl;
+	  }*/
+
 
       NativeCurve3fa curve2D(w0,w1,w2,w3);
       float eps = 4.0f*float(ulp)*reduce_max(max(abs(w0),abs(w1),abs(w2),abs(w3)));
@@ -111,7 +142,84 @@ namespace embree
       vboolx valid = vfloatx(step) < vfloatx(float(N));
       const Vec4vfx p0 = curve2D.template eval0<VSIZEX>(0,16);
       const Vec4vfx p1 = curve2D.template eval1<VSIZEX>(0,16);
+
+
+
+	  //	FOR CYLINDER CULLING TEST
+	  /*if (sampleCount < 100) {
+		  std::ofstream svInputFile;
+		  svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/cylinder_culling_input_file.txt", std::ios::app);
+
+		  if (svInputFile.is_open()) {
+			  svInputFile << std::setprecision(16) << p0.x.f[0] << " " << p0.y.f[0] << " ";
+			  svInputFile << std::setprecision(16) << p1.x.f[0] << " " << p1.y.f[0] << " ";
+			  svInputFile << std::setprecision(16) << p0.w.f[0] << " " << p1.w.f[0] << std::endl;
+		  }
+
+		  svInputFile.close();
+	  }*/
+
       valid &= cylinder_culling_test(zero,Vec2vfx(p0.x,p0.y),Vec2vfx(p1.x,p1.y),max(p0.w,p1.w));
+
+	  //	FOR CYLINDER CULLING TEST
+	  static int validCount = 0;
+	  if (sampleCount < 100) {
+		  if (valid.i[0] = 1 && validCount < 50) {
+			  std::ofstream svInputFile;
+			  svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/cylinder_culling_input_file.txt", std::ios::app);
+
+			  if (svInputFile.is_open()) {
+				  svInputFile << std::setprecision(16) << p0.x.f[0] << " " << p0.y.f[0] << " ";
+				  svInputFile << std::setprecision(16) << p1.x.f[0] << " " << p1.y.f[0] << " ";
+				  svInputFile << std::setprecision(16) << p0.w.f[0] << " " << p1.w.f[0] << std::endl;
+			  }
+
+			  svInputFile.close();
+
+
+
+			  std::ofstream svOutputFile;
+			  svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/cylinder_culling_output_file.txt", std::ios::app);
+
+			  if (svOutputFile.is_open()) {
+				  svOutputFile << std::setprecision(16) << valid.i[0] << std::endl;
+			  }
+
+			  svOutputFile.close();
+
+			  ++sampleCount;
+			  ++validCount;
+		  }
+		  else if (validCount == 50) {
+			  std::ofstream svInputFile;
+			  svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/cylinder_culling_input_file.txt", std::ios::app);
+
+			  if (svInputFile.is_open()) {
+				  svInputFile << std::setprecision(16) << p0.x.f[0] << " " << p0.y.f[0] << " ";
+				  svInputFile << std::setprecision(16) << p1.x.f[0] << " " << p1.y.f[0] << " ";
+				  svInputFile << std::setprecision(16) << p0.w.f[0] << " " << p1.w.f[0] << std::endl;
+			  }
+
+			  svInputFile.close();
+
+
+
+			  std::ofstream svOutputFile;
+			  svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/cylinder_culling_output_file.txt", std::ios::app);
+
+			  if (svOutputFile.is_open()) {
+				  svOutputFile << std::setprecision(16) << valid.i[0] << std::endl;
+			  }
+
+			  svOutputFile.close();
+
+			  ++sampleCount;
+		  }
+	  }
+	  else {
+		 std::cout << "DONE SAMPLING" << std::endl;
+	  }
+
       
       if (any(valid)) 
       {
@@ -121,6 +229,51 @@ namespace embree
         dp1dt = select(reduce_max(abs(dp1dt)) < vfloatx(eps),Vec3vfx(p1-p0),dp1dt);
         const Vec3vfx n0(dp0dt.y,-dp0dt.x,0.0f);
         const Vec3vfx n1(dp1dt.y,-dp1dt.x,0.0f);
+
+
+		// FOR CCP TEST
+		/*if (sampleCount < 100) {
+			std::ofstream svInputFile;
+			svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/CCP_input_file.txt", std::ios::app);
+
+			if (svInputFile.is_open()) {
+				svInputFile << std::setprecision(16) << ray_org.x << " " << ray_org.y << " " << ray_org.z << " ";
+				svInputFile << std::setprecision(16) << ray_space.vx.x << " " << ray_space.vx.y << " " << ray_space.vx.z << " "
+					<< ray_space.vy.x << " " << ray_space.vy.y << " " << ray_space.vy.z << " "
+					<< ray_space.vz.x << " " << ray_space.vz.y << " " << ray_space.vz.z << " ";
+				svInputFile << std::setprecision(16) << v0.x << " " << v0.y << " " << v0.z << " " << v0.w << " "
+					<< v1.x << " " << v1.y << " " << v1.z << " " << v1.w << " "
+					<< v2.x << " " << v2.y << " " << v2.z << " " << v2.w << " "
+					<< v3.x << " " << v3.y << " " << v3.z << " " << v3.w << " ";
+				svInputFile << std::setprecision(16) << N << std::endl;
+			}
+
+			svInputFile.close();
+		}*/
+
+		//	FOR CCP TEST
+		/*if (sampleCount < 100) {
+			std::ofstream svOutputFile;
+			svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/CCP_output_file.txt", std::ios::app);
+
+			if (svOutputFile.is_open()) {
+				svOutputFile << std::setprecision(16) << valid.i[0] << " ";
+				svOutputFile << std::setprecision(16) << p0.x.f[0] << " " << p0.y.f[0] << " " << p0.z.f[0] << " " << p0.w.f[0] << " ";
+				svOutputFile << std::setprecision(16) << p1.x.f[0] << " " << p1.y.f[0] << " " << p1.z.f[0] << " " << p1.w.f[0] << " ";
+				svOutputFile << std::setprecision(16) << n0.x.f[0] << " " << n0.y.f[0] << " " << n0.z.f[0] << " ";
+				svOutputFile << std::setprecision(16) << n1.x.f[0] << " " << n1.y.f[0] << " " << n1.z.f[0] << std::endl;
+			}
+
+			svOutputFile.close();
+
+			++sampleCount;
+		}
+		else {
+			std::cout << "DONE SAMPLING" << std::endl;
+		}*/
+
+
+
         const Vec3vfx nn0 = normalize(n0);
         const Vec3vfx nn1 = normalize(n1);
         const Vec3vfx lp0 = madd(p0.w,nn0,Vec3vfx(p0));
@@ -139,9 +292,49 @@ namespace embree
           
           if (any(valid0))
           {
+			  // FOR RCI COMPLETION TEST
+			  /*static int sampleInputCount = 0;
+			  if (sampleInputCount < 50) {
+				  std::ofstream svInputFile;
+				  svInputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/rci_completion_input_file.txt", std::ios::app);
+
+				  if (svInputFile.is_open()) {
+					  svInputFile << std::setprecision(16) << n0.x.f[0] << " " << n0.y.f[0] << " " << n0.z.f[0] << " ";
+					  svInputFile << std::setprecision(16) << n1.x.f[0] << " " << n1.y.f[0] << " " << n1.z.f[0] << " ";
+					  svInputFile << std::setprecision(16) << p0.x.f[0] << " " << p0.y.f[0] << " " << p0.z.f[0] << " " << p0.w.f[0] << " ";
+					  svInputFile << std::setprecision(16) << p1.x.f[0] << " " << p1.y.f[0] << " " << p1.z.f[0] << " " << p1.w.f[0] << " ";
+					  svInputFile << std::setprecision(16) << ray_tnear << " ";
+					  svInputFile << std::setprecision(16) << ray_tfar << std::endl;
+				  }
+
+				  svInputFile.close();
+				  ++sampleInputCount;
+			  }*/
+
+
             vv = madd(2.0f,vv,vfloatx(-1.0f));
             RibbonHit<NativeCurve3fa,VSIZEX> bhit(valid0,vu,vv,vt,0,N,v0,v1,v2,v3);
             ishit |= epilog(bhit.valid,bhit);
+
+
+			//	FOR RCI COMPLETION TEST
+			/*static int sampleOutputCount = 0;
+			if (sampleOutputCount < 50) {
+				std::ofstream svOutputFile;
+				svOutputFile.open("C:/Users/evanwaxman/Documents/workspace/rci_unit/sim/txt_files/rci_completion_output_file.txt", std::ios::app);
+
+				if (svOutputFile.is_open()) {
+					svOutputFile << std::setprecision(16) << ishit << std::endl;
+				}
+
+				svOutputFile.close();
+
+				sampleOutputCount +=1;
+			}
+			else {
+				std::cout << "DONE SAMPLING" << std::endl;
+			}*/
+
           }
         }
       }
@@ -189,6 +382,7 @@ namespace embree
           }
         }
       }
+
       return ishit;
     }
         
